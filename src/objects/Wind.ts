@@ -22,18 +22,19 @@ export default class Wind extends THREE.Mesh{
         gradient.addColorStop( 1.0, 'rgba(255,255,255,0)' );
 
         context.fillStyle = gradient;
-        context.fillRect( 0, 0, planeWidth, planeHeight );
+        context.fillRect(0, 0, planeWidth, planeHeight );
         
         this._texture = new THREE.CanvasTexture( canvas );
     }
 
-    public generateWindLines(amount: number) : Array<WindLine>
+    public generateWindLines(amount: number, widthSegments: number) : Array<WindLine>
     {
 		var lines = [];
 
         for(var i = 0; i < amount; ++i)
         {
-            var line = new WindLine({ texture: this._texture });
+            var randomWidth:number = THREE.MathUtils.randInt(1, widthSegments)
+            var line = new WindLine({ texture: this._texture, widthSegments: randomWidth });
             lines.push( line );
         }
 

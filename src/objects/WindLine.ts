@@ -7,11 +7,11 @@ export default class WindLine extends THREE.Mesh {
     rndd: number;
     pos: THREE.BufferAttribute | THREE.InterleavedBufferAttribute;
     
-    constructor(options: {texture: THREE.CanvasTexture})
+    constructor(options: {texture: THREE.CanvasTexture, widthSegments: number})
     {
         super()
 
-        this.geometry = new THREE.PlaneGeometry( 1, 1, 20, 1 ),
+        this.geometry = new THREE.PlaneGeometry( 1, 1, options.widthSegments, 1 ),
         this.pos = this.geometry.getAttribute('position');
         this.rnda = Math.random();
         this.rndb = Math.random();

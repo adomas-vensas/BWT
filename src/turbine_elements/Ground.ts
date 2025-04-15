@@ -16,7 +16,8 @@ export default class Ground extends THREE.Mesh {
 
         this.material = new THREE.MeshStandardMaterial({
             displacementMap : displacementMap,
-            map: hillsTexture,
+            wireframe: true
+            // map: hillsTexture
         });
         this.geometry = new THREE.PlaneGeometry(
             options.sideSize,
@@ -27,7 +28,6 @@ export default class Ground extends THREE.Mesh {
         this.rotation.x = -Math.PI / 2;
 
         const position = this.geometry.attributes.position as THREE.BufferAttribute;
-
         for (let i = 0; i < position.count; ++i) {
             const x = position.getX(i);
             const y = position.getY(i);

@@ -22,15 +22,18 @@ camera.position.setZ(30);
 camera.position.setY(10);
 
 
+const axesHelper = new THREE.AxesHelper( 25 );
+scene.add(axesHelper);
+
 const ambientLight = new THREE.AmbientLight(0xFFFFFF);
 scene.add(ambientLight);
 
-const sideSize : number = 40;
+const sideSize : number = 20;
 
-const ground = new Ground({ sideSize: sideSize, resolution: 256 });
+const ground = new Ground({ sideSize: sideSize, resolution: 512 });
 scene.add(ground);
 
-const windLines = new Wind(sideSize, sideSize).generateWindLines(80);
+const windLines = new Wind(sideSize, sideSize).generateWindLines(100, 10);
 scene.add(...windLines)
 
 const height = 3;
@@ -53,13 +56,16 @@ renderer.setAnimationLoop( animate );
 
 function flowLine( time:number, line: WindLine )
 {
+  const rowLength = (line.geometry as THREE.PlaneGeometry).parameters.widthSegments + 1;
+  const totalPoints = line.pos.count;
+
 		time = time/6000;
-		for( var i=0; i<42; i++ )
+		for( var i=0; i < totalPoints; i++ )
 		{
-				var t = time + (i%21)/60;
-				var x = (sideSize / 2) * Math.sin( 5*line.rnda*t + 6*line.rndb );
-				var y = (sideSize / 2) * Math.cos( 5*line.rndc*t + 6*line.rndd );
-				var z = ground.getElevation(x, y) + 0.5 + 0.04 * (i > 20 ? 1 : -1) * Math.cos((i % 21 - 10) /8);
+				var t = time + (i % rowLength) / 60;
+				var x = (sideSize / 2) * Math.sin( 5 * line.rnda * t + 6 * line.rndb );
+				var y = (sideSize / 2) * Math.cos( 5 * line.rndc * t + 6 * line.rndd );
+				var z = ground.getElevation(x, y) + 0.5 + 0.04 * (i > rowLength - 1 ? 1 : -1) * Math.cos((i % rowLength - 10) /8);
 			
 				line.pos.setXYZ(i, x, z, -y);
 		}
