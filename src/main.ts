@@ -64,10 +64,10 @@ function flowLine( time:number, line: WindLine )
 		{
 				var t = time + (i % rowLength) / 60;
 				var x = (sideSize / 2) * Math.sin( 5 * line.rnda * t + 6 * line.rndb );
-				var y = (sideSize / 2) * Math.cos( 5 * line.rndc * t + 6 * line.rndd );
-				var z = ground.getElevation(x, y) + 0.5 + 0.04 * (i > rowLength - 1 ? 1 : -1) * Math.cos((i % rowLength - 10) /8);
-			
-				line.pos.setXYZ(i, x, z, -y);
+				var z = (sideSize / 2) * Math.cos( 5 * line.rndc * t + 6 * line.rndd );
+				var y = ground.getElevation(x, -z) + 0.5 + 0.04 * (i > rowLength - 1 ? 1 : -1) * Math.cos((i % rowLength - 10) /8);
+
+				line.pos.setXYZ(i, x, y, z);
 		}
 		line.pos.needsUpdate = true;
 }
