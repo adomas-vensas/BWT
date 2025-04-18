@@ -40,7 +40,8 @@ const sideSize : number = 20;
 const ground = new Ground({ sideSize: sideSize, resolution: 64 });
 scene.add(ground);
 
-const windLines = new Wind(sideSize, sideSize).generateWindLines(100, 10);
+const wind = new Wind(sideSize, sideSize);
+const windLines = wind.generateWindLines(10, 10);
 scene.add(...windLines)
 
 const height = 3;
