@@ -63,7 +63,7 @@ renderer.setAnimationLoop( animate );
 
 function flowLine( time:number, line: WindLine )
 {
-  const rowLength = (line.geometry as MeshLineGeometry).width.length;
+  const rowLength = line.geometry.width.length;
 
   time /= 6000;
 
@@ -79,5 +79,5 @@ function flowLine( time:number, line: WindLine )
     geometryPoints.push(new THREE.Vector3(x, y, z));
   }
 
-  (line.geometry as MeshLineGeometry).setPoints(geometryPoints);
+  line.geometry.setPoints(geometryPoints);
 }

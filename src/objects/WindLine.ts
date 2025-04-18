@@ -6,12 +6,15 @@ export default class WindLine extends THREE.Mesh {
     rndb: number;
     rndc: number;
     rndd: number;
+    geometry: MeshLineGeometry;
     
     constructor(options: {texture: THREE.CanvasTexture, resolution: number})
     {
-        super()
+        const geom = new MeshLineGeometry();
         
-        this.geometry = new MeshLineGeometry();
+        super(geom)
+
+        this.geometry = geom;
 
         this.rnda = Math.random();
         this.rndb = Math.random();
