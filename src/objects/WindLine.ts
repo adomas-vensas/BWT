@@ -24,11 +24,6 @@ export default class WindLine extends THREE.Mesh {
         this.rndc = Math.random();
         this.rndd = Math.random();
         
-        // this.material = new THREE.ShaderMaterial({
-        //     fragmentShader: fragmentShader,
-        //     vertexShader: vertexShader
-        // });
-
         this.material = new MeshLineMaterial({
             useMap: 1,
             lineWidth: 0.2,
