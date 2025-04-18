@@ -7,7 +7,7 @@ export default class WindLine extends THREE.Mesh {
     rndc: number;
     rndd: number;
     
-    constructor(options: {texture: THREE.CanvasTexture, widthSegments: number})
+    constructor(options: {texture: THREE.CanvasTexture, resolution: number})
     {
         super()
         
@@ -22,7 +22,7 @@ export default class WindLine extends THREE.Mesh {
             useMap: 1,
             lineWidth: 0.2,
             map: options.texture,
-            resolution: new THREE.Vector2(options.widthSegments, 1)
+            resolution: new THREE.Vector2(options.resolution, 1)
         })
     }
 }

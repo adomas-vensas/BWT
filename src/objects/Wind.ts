@@ -27,14 +27,14 @@ export default class Wind extends THREE.Mesh{
         this._texture = new THREE.CanvasTexture( canvas );
     }
 
-    public generateWindLines(amount: number, widthSegments: number) : Array<WindLine>
+    public generateWindLines(amount: number, resolution: number) : Array<WindLine>
     {
 		var lines = [];
 
         for(var i = 0; i < amount; ++i)
         {
-            var randomWidth:number = THREE.MathUtils.randInt(1, widthSegments)
-            var line = new WindLine({ texture: this._texture, widthSegments: randomWidth });
+            var randomWidth:number = THREE.MathUtils.randInt(1, resolution)
+            var line = new WindLine({ texture: this._texture, resolution: randomWidth });
             lines.push( line );
         }
 

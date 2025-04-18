@@ -40,7 +40,7 @@ const sideSize : number = 20;
 const ground = new Ground({ sideSize: sideSize, resolution: 64 });
 scene.add(ground);
 
-const windLines = new Wind(sideSize, sideSize).generateWindLines(10, 20);
+const windLines = new Wind(sideSize, sideSize).generateWindLines(100, 10);
 scene.add(...windLines)
 
 const height = 3;
@@ -69,7 +69,7 @@ function flowLine( time:number, line: WindLine )
 
   const geometryPoints = []
 
-  for(var i = -sideSize / 2; i < sideSize / 2; i += 0.1)
+  for(var i = 0; i < 10; ++i)
   {
     var t = time + (i % rowLength) / 60;
     var x = (sideSize / 2) * Math.sin( 5 * line.rnda * t + 6 * line.rndb );
