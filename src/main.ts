@@ -6,6 +6,7 @@ import Ground from './turbine_elements/Ground';
 import Mast from './objects/Mast';
 import Wind from './objects/Wind';
 import WindLine from './objects/WindLine';
+import { MeshLineGeometry } from 'meshline';
 
 const scene = new THREE.Scene();
 
@@ -36,15 +37,15 @@ scene.add(ambientLight);
 
 const sideSize : number = 20;
 
-const ground = new Ground({ sideSize: sideSize, resolution: 512 });
+const ground = new Ground({ sideSize: sideSize, resolution: 64 });
 scene.add(ground);
 
-const windLines = new Wind(sideSize, sideSize).generateWindLines(100, 10);
+const windLines = new Wind(sideSize, sideSize).generateWindLines(10, 20);
 scene.add(...windLines)
 
 const height = 3;
-const mast = new Mast({ x: 0, z: sideSize / 4, y: height / 2, height: height });
-scene.add(mast);
+// const mast = new Mast({ x: 0, z: sideSize / 4, y: height / 2, height: height });
+// scene.add(mast);
 
 scene.background = new THREE.Color( 'deepskyblue' );
 
@@ -62,18 +63,21 @@ renderer.setAnimationLoop( animate );
 
 function flowLine( time:number, line: WindLine )
 {
-  const rowLength = (line.geometry as THREE.PlaneGeometry).parameters.widthSegments + 1;
-  const totalPoints = line.pos.count;
+  const rowLength = (line.geometry as MeshLineGeometry).width.length;
 
-		time = time/6000;
-		for( var i=0; i < totalPoints; i++ )
-		{
-				var t = time + (i % rowLength) / 60;
-				var x = (sideSize / 2) * Math.sin( 5 * line.rnda * t + 6 * line.rndb );
-				var z = (sideSize / 2) * Math.cos( 5 * line.rndc * t + 6 * line.rndd );
-				var y = ground.getElevation(x, -z) + 0.5 + 0.04 * (i > rowLength - 1 ? 1 : -1) * Math.cos((i % rowLength - 10) /8);
+  time /= 6000;
 
-				line.pos.setXYZ(i, x, y, z);
-		}
-		line.pos.needsUpdate = true;
+  const geometryPoints = []
+
+  for(var i = -sideSize / 2; i < sideSize / 2; i += 0.1)
+  {
+    var t = time + (i % rowLength) / 60;
+    var x = (sideSize / 2) * Math.sin( 5 * line.rnda * t + 6 * line.rndb );
+    var z = (sideSize / 2) * Math.cos( 5 * line.rndc * t + 6 * line.rndd );
+    var y = ground.getElevation(x, -z) + 0.5 + 0.04 * (i > rowLength - 1 ? 1 : -1) * Math.cos((i % rowLength - 10) /8);
+
+    geometryPoints.push(new THREE.Vector3(x, y, z));
+  }
+
+  (line.geometry as MeshLineGeometry).setPoints(geometryPoints);
 }
