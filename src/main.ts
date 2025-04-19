@@ -68,7 +68,7 @@ let angleInDeg = 45;
 async function animate(t: number) {
 
   var time = t / 1000;
-  if(time - lastUpdated > 10)
+  if(time - lastUpdated > 60)
   {
     angleInDeg = fetchAngle();
     wind.setAngle(angleInDeg);

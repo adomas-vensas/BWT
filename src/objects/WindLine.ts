@@ -27,6 +27,8 @@ export default class WindLine extends THREE.Mesh {
 
     private _rightDomain: number;
 
+    private _rotationStepInDeg: number = 1;
+
     constructor(options: {texture: THREE.CanvasTexture, resolution: number, planeWidth: number})
     {
         const geom = new MeshLineGeometry();
@@ -54,20 +56,23 @@ export default class WindLine extends THREE.Mesh {
             map: options.texture,
             resolution: new THREE.Vector2(options.resolution, 1)
         })
-
     }
 
-    
-    public flowLine( timeInMs:number, destinationAngleInDeg:number, rotationStepInM: number)
+    public rotateLine(destinationAngleInDeg: number, rotationStepInDeg: number)
     {
         this._lastAngleInDeg = this._angleInDeg;
         this._angleInDeg = destinationAngleInDeg;
         
         this._lastAngleInRad = this._angleInRad
         this._angleInRad = THREE.MathUtils.degToRad(this._angleInDeg);
-        
+
+        this._rotationStepInDeg = rotationStepInDeg;
+    }
+
+    public flowLine( timeInMs:number)
+    {
         var timeInS = timeInMs / 1000;
-        
+
         const rowLength = this.geometry.width.length;
         const geometryPoints = []
         
@@ -76,7 +81,7 @@ export default class WindLine extends THREE.Mesh {
             var z = -this._planeWidth / 2 + i + timeInS % this._planeWidth + this.d_x;
             var x = -this._planeWidth / 2 + i + timeInS % this._planeWidth;
             
-            [z, x] = this.rotateLine(z, x, this.getAngle(rotationStepInM) - Math.PI / 4)
+            [z, x] = this.rotate(z, x, this.getAngle() - Math.PI / 4)
 
             if(Math.abs(z) > this._rightDomain || Math.abs(x) > this._rightDomain)
             {
@@ -91,19 +96,19 @@ export default class WindLine extends THREE.Mesh {
         this.geometry.setPoints(geometryPoints);
     }
 
-    private getAngle(rotationStep: number): number {
+    private getAngle(): number {
 
         if (Math.abs(this._lastAngleInDeg - this._angleInDeg) > 1) {
-            const newAngleInDeg = mutils.mod(this._lastAngleInDeg + rotationStep, 360);
+            const newAngleInDeg = mutils.mod(this._lastAngleInDeg + this._rotationStepInDeg, 360);
 
             this._lastAngleInDeg = newAngleInDeg;
             this._lastAngleInRad = THREE.MathUtils.degToRad(newAngleInDeg);
         }
       
         return this._lastAngleInRad;
-      }
+    }
 
-    private rotateLine(z: number, x: number, angleInRad: number): [number, number] {
+    private rotate(z: number, x: number, angleInRad: number): [number, number] {
         const newZ = z * Math.cos(angleInRad) - x * Math.sin(angleInRad);
         const newX = z * Math.sin(angleInRad) + x * Math.cos(angleInRad);
       

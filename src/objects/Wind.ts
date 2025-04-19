@@ -22,8 +22,12 @@ export default class Wind extends THREE.Mesh{
     public setAngle(windAngleInDeg: number)
     {
         this._rotationStep = this.calculateRotationMultiplier(windAngleInDeg);
-        console.log(windAngleInDeg, this._windAngleInDeg, this._rotationStep)
         this._windAngleInDeg = windAngleInDeg;
+
+        for(var line of this._windLines)
+        {
+            line.rotateLine(windAngleInDeg, this._rotationStep)
+        }
     }
 
     public getWindLines()
@@ -35,7 +39,7 @@ export default class Wind extends THREE.Mesh{
     {
         for(var line of this._windLines)
         {
-            line.flowLine(timeInMs, this._windAngleInDeg, this._rotationStep);
+            line.flowLine(timeInMs);
         }
     }
 
