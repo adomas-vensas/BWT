@@ -46,9 +46,12 @@ const sideSize : number = 20;
 const ground = new Ground({ sideSize: sideSize, resolution: 64 });
 scene.add(ground);
 
-const wind = new Wind(sideSize);
-const windLines = wind.generateWindLines(10, 10);
-scene.add(...windLines)
+const wind = new Wind({
+  planeWidth: sideSize,
+  lineAmount: 10,
+  lineResolution: 10
+});
+scene.add(...wind.getWindLines());
 
 const height = 3;
 // const mast = new Mast({ x: 0, z: sideSize / 4, y: height / 2, height: height });
@@ -59,13 +62,26 @@ scene.background = new THREE.Color( 'deepskyblue' );
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
+let lastUpdated = 0;
+let angle = 0;
+
 async function animate(t: number) {
 
-  for( var line of windLines ){
-    line.flowLine(t);
+  if(t - lastUpdated >= 60)
+  {
+    angle = fetchAngle();
+    lastUpdated = t;
   }
+
+  wind.flow(t);
 
   // controls.update();
   renderer.render( scene, camera );
 }
 renderer.setAnimationLoop( animate );
+
+function fetchAngle(): number
+{
+  const receivedAngle = Math.floor(Math.random() * 360);
+  return receivedAngle;
+}

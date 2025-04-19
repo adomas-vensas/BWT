@@ -17,8 +17,6 @@ export default class WindLine extends THREE.Mesh {
     private _planeWidth:number;
     d_x: number;
 
-    private _lastUpdated:number = 0;
-    
     private _angleInDeg:number = 45;
     private _lastAngleInDeg:number = this._angleInDeg;
     
@@ -62,7 +60,7 @@ export default class WindLine extends THREE.Mesh {
     }
 
     
-    public flowLine( time:number )
+    public flowLine( time:number, angleInDeg:number )
     {
         const rowLength = this.geometry.width.length;
 
@@ -70,26 +68,18 @@ export default class WindLine extends THREE.Mesh {
 
         const geometryPoints = []
         
-        if(time - this._lastUpdated >= 60)
-        {
-            // const receivedAngle = Math.floor(Math.random() * 360);
-            const receivedAngle = 330;
-            
-            this._lastAngleInDeg = this._angleInDeg;
-            this._angleInDeg = receivedAngle;
+        // this._lastAngleInDeg = this._angleInDeg;
+        // this._angleInDeg = destinationAngle;
 
-            const shortest =
-                (this._angleInDeg - this._lastAngleInDeg + 540) % 360
-                - 180; 
+        // const shortest =
+        //     (this._angleInDeg - this._lastAngleInDeg + 540) % 360
+        //     - 180;
 
-            this._lastMultiplier = shortest < 0 ? -1 : 1;
+        // this._lastMultiplier = shortest < 0 ? -1 : 1;
 
-            this._lastAngleInRad = this._angleInRad
-            this._angleInRad = THREE.MathUtils.degToRad(this._angleInDeg);
-            
-            this._lastUpdated = time;
-        }
-
+        // this._lastAngleInRad = this._angleInRad
+        // this._angleInRad = THREE.MathUtils.degToRad(this._angleInDeg);
+        
         for(var i = 0; i <= this._length; i += 0.1)
         {
             var z = -this._planeWidth / 2 + i + time % this._planeWidth + this.d_x;
@@ -101,6 +91,7 @@ export default class WindLine extends THREE.Mesh {
             {
                 continue;
             }
+
             var y = 0.5 + this.getElevation(x, -z) * (Math.cos(time * this.rnda) * Math.sin(time * this.rndb) + Math.cos(x * this.rndc));
             
             geometryPoints.push(new THREE.Vector3(x, y, z));

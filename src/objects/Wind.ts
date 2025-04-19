@@ -4,18 +4,54 @@ import WindLine from '../objects/WindLine';
 export default class Wind extends THREE.Mesh{
 
     private _texture : THREE.CanvasTexture;
-    private _planeWidth: number;
+    private _windLines: Array<WindLine>
 
-    constructor(planeWidth: number)
+    constructor(options: { planeWidth: number, lineAmount: number, lineResolution: number})
     {
         super()
 
+        this._texture = this.createTexture(options.planeWidth);
+        this._windLines = this.generateWindLines(options.lineAmount,
+            options.lineResolution, options.planeWidth);
+    }
+
+    public getWindLines()
+    {
+        return this._windLines;
+    }
+
+    public flow(t: number)
+    {
+        for(var line of this._windLines)
+        {
+            line.flowLine(t, 45);
+        }
+    }
+
+    private generateWindLines(amount: number, resolution: number, planeWidth: number) : Array<WindLine>
+    {
+		var lines = [];
+
+        for(var i = 0; i < amount; ++i)
+        {
+            var randomResolution:number = THREE.MathUtils.randInt(1, resolution)
+            var line = new WindLine({
+                texture: this._texture,
+                resolution: randomResolution,
+                planeWidth: planeWidth
+            });
+            lines.push( line );
+        }
+
+        return lines;
+    }
+
+    private createTexture(planeWidth: number)
+    {
         var canvas = document.createElement( 'CANVAS' ) as HTMLCanvasElement;
         canvas.width = planeWidth;
         canvas.height = planeWidth;
 
-        this._planeWidth = planeWidth;
-    
         var context = canvas.getContext( '2d' )!;
         
         var gradient = context.createLinearGradient( 0, 0, planeWidth, 0 );
@@ -26,21 +62,6 @@ export default class Wind extends THREE.Mesh{
 
         context.fillStyle = gradient;
         context.fillRect(0, 0, planeWidth, planeWidth );
-        
-        this._texture = new THREE.CanvasTexture( canvas );
-    }
-
-    public generateWindLines(amount: number, resolution: number) : Array<WindLine>
-    {
-		var lines = [];
-
-        for(var i = 0; i < amount; ++i)
-        {
-            var randomWidth:number = THREE.MathUtils.randInt(1, resolution)
-            var line = new WindLine({ texture: this._texture, resolution: randomWidth, planeWidth: this._planeWidth });
-            lines.push( line );
-        }
-
-        return lines;
+        return new THREE.CanvasTexture( canvas );
     }
 }
