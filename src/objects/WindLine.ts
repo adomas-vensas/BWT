@@ -78,6 +78,8 @@ export default class WindLine extends THREE.Mesh {
         
         for(var i = 0; i <= this._length; i += 0.1)
         {
+            var t = timeInS + (i % rowLength) / 60;
+
             var z = -this._planeWidth / 2 + i + timeInS % this._planeWidth + this.d_x;
             var x = -this._planeWidth / 2 + i + timeInS % this._planeWidth;
             
@@ -88,7 +90,7 @@ export default class WindLine extends THREE.Mesh {
                 continue;
             }
 
-            var y = 0.5 + this.getElevation(x, -z) * (Math.cos(timeInS * this.rnda) * Math.sin(timeInS * this.rndb) + Math.cos(x * this.rndc));
+            var y = 0.5 + this.getElevation(x, -z) * (Math.cos(t * this.rnda) * Math.sin(t * this.rndb) + Math.cos(t * this.rndc));
             
             geometryPoints.push(new THREE.Vector3(x, y, z));
         }
