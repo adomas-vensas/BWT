@@ -2,9 +2,11 @@ import * as THREE from 'three';
 import { MeshLineGeometry, MeshLineMaterial } from 'meshline';
 // import fragmentShader from '../shaders/Wind/fragment.glsl?raw';
 // import vertexShader from '../shaders/Wind/vertex.glsl?raw';
+import { SimplexNoise } from 'three/examples/jsm/Addons';
 
 
 export default class WindLine extends THREE.Mesh {
+    private readonly _simplex: SimplexNoise = new SimplexNoise;
     readonly rnda: number;
     readonly rndb: number;
     readonly rndc: number;
@@ -18,8 +20,13 @@ export default class WindLine extends THREE.Mesh {
     
     private _a:number = 1;
     private _lastA:number = this._a;
+    private _angle:number = 45;
+    private _lastAngle:number = this._angle;
 
-    private _domain:number;
+    private _rotate:boolean = false;
+
+    private _leftDomain: number;
+    private _rightDomain: number;
     
     constructor(options: {texture: THREE.CanvasTexture, resolution: number, planeWidth: number})
     {
@@ -35,7 +42,8 @@ export default class WindLine extends THREE.Mesh {
         this.rndd = Math.random();
 
         this._planeWidth = options.planeWidth;
-        this._domain = options.planeWidth / 2;
+        this._leftDomain = -options.planeWidth / 2;
+        this._rightDomain = options.planeWidth / 2;
 
         this.space = 5
         this.d_x = Math.random() * this.space - this.space / 2 
@@ -60,30 +68,38 @@ export default class WindLine extends THREE.Mesh {
         
         if(time - this._lastUpdated >= 10)
         {
-            this._lastA = this._a;
-            const angleInRad = Math.random() * (Math.PI / 2)
-            this._a = Math.tan(angleInRad);
-            // console.log("    Rad: " + angleInRad)
-            console.log("Degrees: " + angleInRad * (180 / Math.PI));
-            // console.log("Last A: " + this._lastA)
-            // console.log("     A: " + this._a)
+            const angleInRad = Math.random() * 2 * Math.PI;
             
-            this._domain = this.calculateDomain(this._a);
+            this._lastAngle = this._angle;
+            this._angle = angleInRad * (180 / Math.PI)
 
+            this._lastA = this._a
+            this._a = Math.tan(angleInRad);
+
+            this._rotate = true;
+            
+            // console.log(this._a);
+        //     this._lastA = this._a;
+        //     const angleInRad = Math.random() * (Math.PI / 2)
+        //     this._a = Math.tan(angleInRad);
+        //     // console.log("    Rad: " + angleInRad)
+        //     console.log("Degrees: " + angleInRad * (180 / Math.PI));
+        //     // console.log("Last A: " + this._lastA)
+        //     // console.log("     A: " + this._a)
+            
             this._lastUpdated = time;
         }
 
-        let i = -1.0;
-        while(i < this._domain)
+        for(var i = 0; i <= this._rightDomain; i += 0.7)
         {
-            i = this.interate(i);
-            // console.log(i)
-            // console.log(i)
-            // var t = time + (i % rowLength) / 60;
             var z = i;
-            
             var x = this.getA() * i;
-            var y = 0 // ground.getElevation(x, -z) + 0.5 + 0.04 * (i > rowLength - 1 ? 1 : -1) * Math.cos((i % rowLength - 10) /8);
+
+            if(Math.abs(z) > this._rightDomain || Math.abs(x) > this._rightDomain)
+            {
+                continue;
+            }
+            var y = 0.5 + this.getElevation(x, -z) * (Math.cos(time * 5) * Math.sin(time) + Math.cos(x * this.rnda));
             
             geometryPoints.push(new THREE.Vector3(x, y, z));
         }
@@ -91,45 +107,36 @@ export default class WindLine extends THREE.Mesh {
         this.geometry.setPoints(geometryPoints);
     }
 
-
-    private interate(i:number)
-    {
-        if(i + 1 <= this._domain)
-        {
-            return i + 1;
-        }
-
-        return this._domain;
-    }
-
     private getA()
     {
         if(this._lastA > this._a)
         {
             this._lastA -= 0.0007;
+            return this._lastA;
         }
         else
         {
             this._lastA += 0.0007;
         }
-
+        
         return this._lastA;
     }
 
-    private calculateDomain(a:number)
-    {
-        const side = this._planeWidth / 2;
-
-        if(0 <= a && a <= 1)
-        {
-            return side;
-        }
-        else if(1 < a)
-        {
-            return side / a;
-        }
-
-        return side;
+    private rotateLine(z: number, x: number, angleInRad: number): [number, number] {
+        const newZ = z * Math.cos(angleInRad) - x * Math.sin(angleInRad);
+        const newX = z * Math.sin(angleInRad) + x * Math.cos(angleInRad);
+      
+        return [newZ, newX];
     }
 
+    public getElevation(x:number, y:number) : number
+    {
+        if( x*x > this._planeWidth * this._planeWidth ) return -1;
+        if( y*y > this._planeWidth * this._planeWidth ) return -1;
+
+        var major = 0.6 * this._simplex.noise( 0.1*x, 0.1*y );
+        var minor = 0.2 * this._simplex.noise( 0.3*x, 0.3*y );
+    
+        return major + minor;
+    }
 }
