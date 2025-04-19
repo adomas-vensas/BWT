@@ -11,7 +11,11 @@ import { MeshLineGeometry } from 'meshline';
 const scene = new THREE.Scene();
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(0, 30, 0); 
+camera.up.set(1, 0, 0);    
+camera.lookAt(0, 0, 0);   
 
+// camera.rotateY(-Math.PI/2);
 const renderer = new THREE.WebGLRenderer({
   canvas: document.querySelector('#bg') as HTMLCanvasElement,
 });
@@ -25,10 +29,6 @@ window.addEventListener('resize', function () {
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 
-camera.position.setZ(30);
-camera.position.setY(10);
-
-
 const axesHelper = new THREE.AxesHelper( 25 );
 scene.add(axesHelper);
 
@@ -37,11 +37,17 @@ scene.add(ambientLight);
 
 const sideSize : number = 20;
 
+// const geometry = new THREE.SphereGeometry( 0.5, 32, 16 ); 
+// const material = new THREE.MeshBasicMaterial( { color: 0xffff00 } ); 
+// const sphere = new THREE.Mesh( geometry, material );
+// sphere.position.set(sideSize/2, 0, sideSize/2);
+// scene.add( sphere );
+
 const ground = new Ground({ sideSize: sideSize, resolution: 64 });
 scene.add(ground);
 
-const wind = new Wind(sideSize, sideSize);
-const windLines = wind.generateWindLines(10, 10);
+const wind = new Wind(sideSize);
+const windLines = wind.generateWindLines(1, 10);
 scene.add(...windLines)
 
 const height = 3;
@@ -53,32 +59,13 @@ scene.background = new THREE.Color( 'deepskyblue' );
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
-function animate(t: number) {
+async function animate(t: number) {
 
-  for( var line of windLines ) flowLine( t, line );
+  for( var line of windLines ){
+    line.flowLine(t);
+  }
 
-  controls.update();
+  // controls.update();
   renderer.render( scene, camera );
 }
 renderer.setAnimationLoop( animate );
-
-function flowLine( time:number, line: WindLine )
-{
-  const rowLength = line.geometry.width.length;
-
-  time /= 6000;
-
-  const geometryPoints = []
-
-  for(var i = 0; i < 10; ++i)
-  {
-    var t = time + (i % rowLength) / 60;
-    var x = (sideSize / 2) * Math.sin( 5 * line.rnda * t + 6 * line.rndb );
-    var z = (sideSize / 2) * Math.cos( 5 * line.rndc * t + 6 * line.rndd );
-    var y = ground.getElevation(x, -z) + 0.5 + 0.04 * (i > rowLength - 1 ? 1 : -1) * Math.cos((i % rowLength - 10) /8);
-
-    geometryPoints.push(new THREE.Vector3(x, y, z));
-  }
-
-  line.geometry.setPoints(geometryPoints);
-}
