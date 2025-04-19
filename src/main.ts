@@ -63,14 +63,16 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
 let lastUpdated = 0;
-let angle = 0;
+let angleInDeg = 45;
 
 async function animate(t: number) {
 
-  if(t - lastUpdated >= 60)
+  var time = t / 1000;
+  if(time - lastUpdated > 10)
   {
-    angle = fetchAngle();
-    lastUpdated = t;
+    angleInDeg = fetchAngle();
+    wind.setAngle(angleInDeg);
+    lastUpdated = time;
   }
 
   wind.flow(t);
@@ -82,6 +84,6 @@ renderer.setAnimationLoop( animate );
 
 function fetchAngle(): number
 {
-  const receivedAngle = Math.floor(Math.random() * 360);
-  return receivedAngle;
+  const receivedAngleInDeg = Math.floor(Math.random() * 360);
+  return receivedAngleInDeg;
 }

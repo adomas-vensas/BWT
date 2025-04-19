@@ -5,6 +5,10 @@ export default class Wind extends THREE.Mesh{
 
     private _texture : THREE.CanvasTexture;
     private _windLines: Array<WindLine>
+    
+    private _windAngleInDeg: number = 45;
+    private _rotationStep: number = 1;
+    private _rotationMultiplier: number = 0.001;
 
     constructor(options: { planeWidth: number, lineAmount: number, lineResolution: number})
     {
@@ -15,16 +19,23 @@ export default class Wind extends THREE.Mesh{
             options.lineResolution, options.planeWidth);
     }
 
+    public setAngle(windAngleInDeg: number)
+    {
+        this._rotationStep = this.calculateRotationMultiplier(windAngleInDeg);
+        console.log(windAngleInDeg, this._windAngleInDeg, this._rotationStep)
+        this._windAngleInDeg = windAngleInDeg;
+    }
+
     public getWindLines()
     {
         return this._windLines;
     }
 
-    public flow(t: number)
+    public flow(timeInMs: number)
     {
         for(var line of this._windLines)
         {
-            line.flowLine(t, 45);
+            line.flowLine(timeInMs, this._windAngleInDeg, this._rotationStep);
         }
     }
 
@@ -63,5 +74,16 @@ export default class Wind extends THREE.Mesh{
         context.fillStyle = gradient;
         context.fillRect(0, 0, planeWidth, planeWidth );
         return new THREE.CanvasTexture( canvas );
+    }
+    
+    private calculateRotationMultiplier(windAngleInDeg: number): number
+    {
+        const shortest =
+            (windAngleInDeg - this._windAngleInDeg + 540) % 360
+            - 180;
+
+        const direction = shortest < 0 ? -1 : 1;
+
+        return direction * this._rotationMultiplier;
     }
 }
