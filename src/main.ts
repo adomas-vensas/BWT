@@ -47,7 +47,7 @@ const ground = new Ground({ sideSize: sideSize, resolution: 64 });
 scene.add(ground);
 
 const wind = new Wind(sideSize);
-const windLines = wind.generateWindLines(1, 10);
+const windLines = wind.generateWindLines(10, 10);
 scene.add(...windLines)
 
 const height = 3;
