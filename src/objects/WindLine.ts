@@ -17,6 +17,8 @@ export default class WindLine extends THREE.Mesh {
     private _planeWidth:number;
     d_x: number;
     private pos: THREE.BufferAttribute | THREE.InterleavedBufferAttribute;
+    
+    dispose:boolean = false;
 
     private _angleInDeg:number = 45;
     private _lastAngleInDeg:number = this._angleInDeg;
@@ -32,8 +34,10 @@ export default class WindLine extends THREE.Mesh {
 
     constructor(options: {texture: THREE.ShaderMaterial, resolution: number, planeWidth: number})
     {
-        const geom = new THREE.PlaneGeometry(1, 1, options.planeWidth, 1);
+        const geom = new THREE.PlaneGeometry(2.5, 0.2, 100, 1);
         
+        geom.rotateX(Math.PI/2 * 3)
+        geom.rotateY(-Math.PI/4)
         super(geom)
 
         this.geometry = geom;
@@ -47,7 +51,7 @@ export default class WindLine extends THREE.Mesh {
         this._planeWidth = options.planeWidth;
         this._rightDomain = options.planeWidth / 2;
 
-        this._length = 20;
+        this._length = 5;
 
         this.space = 5
         this.d_x = Math.random() * this.space - this.space / 2 
@@ -66,33 +70,40 @@ export default class WindLine extends THREE.Mesh {
         this._rotationStepInDeg = rotationStepInDeg;
     }
 
-    public flowLine( timeInMs:number)
-    {
+    public flowLine(timeInMs: number): void {
+        const timeInS = timeInMs / 1000;
+        const positions = this.pos;
         const rowLength = this.geometry.parameters.widthSegments + 1;
-        const totalPoints = this.pos.count;
+        const totalPoints = positions.count;
+        
+        const rotationAngle = this.getAngle() - Math.PI / 4;
+        this.rotation.y = rotationAngle
 
-        var timeInS = timeInMs / 1000;
+        var newZ = -this._planeWidth / 2 + timeInS % this._planeWidth;
+        var newX = -this._planeWidth / 2 + timeInS % this._planeWidth;
 
-        for(var i = 0; i <= totalPoints; i += 0.1)
-        {
-            var t = timeInS + (i % rowLength) / 60;
-
-            var z = -this._planeWidth / 2 + i + timeInS % this._planeWidth;
-            var x = -this._planeWidth / 2 + i + timeInS % this._planeWidth;
-            
-            [z, x] = this.rotate(z, x, this.getAngle() - Math.PI / 4)
-
-            if(Math.abs(z) > this._rightDomain || Math.abs(x) > this._rightDomain)
-            {
+        [newZ, newX] = this.rotateEq(newZ, newX, rotationAngle)
+        
+        this.position.x = newX;
+        this.position.z = newZ;
+        
+        for (let i = 0; i < totalPoints; i++) {
+            let z = positions.getZ(i);
+            let x = positions.getX(i);
+    
+            if (Math.abs(z) > this._rightDomain || Math.abs(x) > this._rightDomain) {
                 continue;
             }
 
-            var y = 0.5 + this.getElevation(x, -z) * (Math.cos(t * this.rnda) * Math.sin(t * this.rndb) + Math.cos(t * this.rndc));
-            
-            this.pos.setXYZ(i, x, y, z);
+            const t = timeInS + (i % rowLength) / 60;
+    
+            const y = 0.5 + this.getElevation(x, -z) *
+                (Math.cos(t * this.rnda) * Math.sin(t * this.rndb) + Math.cos(t * this.rndc));
+    
+            positions.setXYZ(i, x, y, z);
         }
-
-        this.pos.needsUpdate = true;
+    
+        positions.needsUpdate = true;
     }
 
     private getAngle(): number {
@@ -107,7 +118,7 @@ export default class WindLine extends THREE.Mesh {
         return this._lastAngleInRad;
     }
 
-    private rotate(z: number, x: number, angleInRad: number): [number, number] {
+    private rotateEq(z: number, x: number, angleInRad: number): [number, number] {
         const newZ = z * Math.cos(angleInRad) - x * Math.sin(angleInRad);
         const newX = z * Math.sin(angleInRad) + x * Math.cos(angleInRad);
       

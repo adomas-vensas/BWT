@@ -10,7 +10,7 @@ export default class Wind extends THREE.Mesh{
     
     private _windAngleInDeg: number = 45;
     private _rotationStep: number = 1;
-    private _rotationMultiplier: number = 0.001;
+    private _rotationMultiplier: number = 0.1;
 
     constructor(options: { planeWidth: number, lineAmount: number, lineResolution: number})
     {
@@ -41,7 +41,7 @@ export default class Wind extends THREE.Mesh{
         return this._windLines;
     }
 
-    public flow(timeInMs: number)
+    public flow(scene: THREE.Scene, timeInMs: number)
     {
         for(var line of this._windLines)
         {

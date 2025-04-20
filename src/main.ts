@@ -41,14 +41,14 @@ scene.add(ground);
 
 const wind = new Wind({
   planeWidth: sideSize,
-  lineAmount: 10,
+  lineAmount: 1,
   lineResolution: 10
 });
 scene.add(...wind.getWindLines());
 
 const height = 3;
-const mast = new Mast({ x: 0, z: 0, y: height / 2, height: height });
-scene.add(mast);
+// const mast = new Mast({ x: 0, z: 0, y: height / 2, height: height });
+// scene.add(mast);
 
 scene.background = new THREE.Color( 'deepskyblue' );
 
@@ -61,14 +61,15 @@ let angleInDeg = 45;
 async function animate(t: number) {
 
   var time = t / 1000;
-  if(time - lastUpdated > 15)
+  if(time - lastUpdated > 60)
   {
-    // angleInDeg = fetchAngle();
+    angleInDeg = fetchAngle();
+    console.log(angleInDeg)
     wind.setAngle(angleInDeg);
     lastUpdated = time;
   }
 
-  wind.flow(t);
+  wind.flow(scene, t);
 
   // controls.update();
   renderer.render( scene, camera );
