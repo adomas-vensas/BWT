@@ -5,8 +5,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import Ground from './turbine_elements/Ground';
 import Mast from './objects/Mast';
 import Wind from './objects/Wind';
-import WindLine from './objects/WindLine';
-import { MeshLineGeometry } from 'meshline';
+import * as simMath from './simulation/sim';
 
 const scene = new THREE.Scene();
 
@@ -37,12 +36,6 @@ scene.add(ambientLight);
 
 const sideSize : number = 20;
 
-// const geometry = new THREE.SphereGeometry( 0.5, 32, 16 ); 
-// const material = new THREE.MeshBasicMaterial( { color: 0xffff00 } ); 
-// const sphere = new THREE.Mesh( geometry, material );
-// sphere.position.set(sideSize/2, 0, sideSize/2);
-// scene.add( sphere );
-
 const ground = new Ground({ sideSize: sideSize, resolution: 64 });
 scene.add(ground);
 
@@ -54,8 +47,8 @@ const wind = new Wind({
 scene.add(...wind.getWindLines());
 
 const height = 3;
-// const mast = new Mast({ x: 0, z: sideSize / 4, y: height / 2, height: height });
-// scene.add(mast);
+const mast = new Mast({ x: 0, z: 0, y: height / 2, height: height });
+scene.add(mast);
 
 scene.background = new THREE.Color( 'deepskyblue' );
 
@@ -70,7 +63,7 @@ async function animate(t: number) {
   var time = t / 1000;
   if(time - lastUpdated > 15)
   {
-    angleInDeg = fetchAngle();
+    // angleInDeg = fetchAngle();
     wind.setAngle(angleInDeg);
     lastUpdated = time;
   }

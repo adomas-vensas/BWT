@@ -1,9 +1,11 @@
 import * as THREE from 'three';
 import WindLine from '../objects/WindLine';
+import vertexShader from '../shaders/Wind/wind.vert?raw';
+import fragmentShader from '../shaders/Wind/wind.frag?raw';
 
 export default class Wind extends THREE.Mesh{
 
-    private _texture : THREE.CanvasTexture;
+    private _texture : THREE.ShaderMaterial;
     private _windLines: Array<WindLine>
     
     private _windAngleInDeg: number = 45;
@@ -14,7 +16,11 @@ export default class Wind extends THREE.Mesh{
     {
         super()
 
-        this._texture = this.createTexture(options.planeWidth);
+        this._texture = new THREE.ShaderMaterial({
+            vertexShader,
+            fragmentShader,
+            transparent: true
+        });
         this._windLines = this.generateWindLines(options.lineAmount,
             options.lineResolution, options.planeWidth);
     }

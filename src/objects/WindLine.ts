@@ -12,10 +12,11 @@ export default class WindLine extends THREE.Mesh {
     readonly rndb: number;
     readonly rndc: number;
     readonly rndd: number;
-    readonly geometry: MeshLineGeometry;
+    readonly geometry: THREE.PlaneGeometry;
     readonly space: number;
     private _planeWidth:number;
     d_x: number;
+    private pos: THREE.BufferAttribute | THREE.InterleavedBufferAttribute;
 
     private _angleInDeg:number = 45;
     private _lastAngleInDeg:number = this._angleInDeg;
@@ -29,13 +30,14 @@ export default class WindLine extends THREE.Mesh {
 
     private _rotationStepInDeg: number = 1;
 
-    constructor(options: {texture: THREE.CanvasTexture, resolution: number, planeWidth: number})
+    constructor(options: {texture: THREE.ShaderMaterial, resolution: number, planeWidth: number})
     {
-        const geom = new MeshLineGeometry();
+        const geom = new THREE.PlaneGeometry(1, 1, options.planeWidth, 1);
         
         super(geom)
 
         this.geometry = geom;
+        this.pos = this.geometry.getAttribute('position');
 
         this.rnda = Math.random();
         this.rndb = Math.random();
@@ -45,17 +47,12 @@ export default class WindLine extends THREE.Mesh {
         this._planeWidth = options.planeWidth;
         this._rightDomain = options.planeWidth / 2;
 
-        this._length = Math.random() * 5;
+        this._length = 20;
 
         this.space = 5
         this.d_x = Math.random() * this.space - this.space / 2 
         
-        this.material = new MeshLineMaterial({
-            useMap: 1,
-            lineWidth: 0.7,
-            map: options.texture,
-            resolution: new THREE.Vector2(options.resolution, 1)
-        })
+        this.material = options.texture;
     }
 
     public rotateLine(destinationAngleInDeg: number, rotationStepInDeg: number)
@@ -71,16 +68,16 @@ export default class WindLine extends THREE.Mesh {
 
     public flowLine( timeInMs:number)
     {
+        const rowLength = this.geometry.parameters.widthSegments + 1;
+        const totalPoints = this.pos.count;
+
         var timeInS = timeInMs / 1000;
 
-        const rowLength = this.geometry.width.length;
-        const geometryPoints = []
-        
-        for(var i = 0; i <= this._length; i += 0.1)
+        for(var i = 0; i <= totalPoints; i += 0.1)
         {
             var t = timeInS + (i % rowLength) / 60;
 
-            var z = -this._planeWidth / 2 + i + timeInS % this._planeWidth + this.d_x;
+            var z = -this._planeWidth / 2 + i + timeInS % this._planeWidth;
             var x = -this._planeWidth / 2 + i + timeInS % this._planeWidth;
             
             [z, x] = this.rotate(z, x, this.getAngle() - Math.PI / 4)
@@ -92,10 +89,10 @@ export default class WindLine extends THREE.Mesh {
 
             var y = 0.5 + this.getElevation(x, -z) * (Math.cos(t * this.rnda) * Math.sin(t * this.rndb) + Math.cos(t * this.rndc));
             
-            geometryPoints.push(new THREE.Vector3(x, y, z));
+            this.pos.setXYZ(i, x, y, z);
         }
 
-        this.geometry.setPoints(geometryPoints);
+        this.pos.needsUpdate = true;
     }
 
     private getAngle(): number {
