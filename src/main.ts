@@ -7,6 +7,7 @@ import Mast from './objects/Mast';
 import Wind from './objects/Wind';
 import * as lbm from './simulation/lbm';
 import * as tf from '@tensorflow/tfjs'
+import * as mrt from './simulation/mrt';
 
 const scene = new THREE.Scene();
 
@@ -89,11 +90,22 @@ const UR = 5                 // Reduced velocity
 const MR = 10                // Mass ratio
 const DR = 0                 // Damping ratio
 
+// structural parameters
+const FN = U0 / (UR * D)                                          // Natural frequency
+const MASS = Math.PI * (D / 2) ** 2 * MR                          // Mass of the cylinder
+const STIFFNESS = (FN * 2 * Math.PI) ** 2 * MASS * (1 + 1 / MR)   // Stiffness of the spring
+const DAMPING = 2 * Math.sqrt(STIFFNESS * MASS) * DR              // Damping of the spring
+
+// fluid parameters
+const NU = U0 * D / RE                                            // Kinematic viscosity
+const TAU = 3 * NU + 0.5                                          // Relaxation time
+const OMEGA = 1 / TAU                                             // Relaxation parameter
+let [MRT_COL_LEFT, _] = mrt.precomputeLeftMatrices(OMEGA)
 
 
-const rho: tf.Tensor2D = tf.ones([NX, NY], 'float32');
+let rho: tf.Tensor2D = tf.ones([NX, NY], 'float32');
 let f: tf.Tensor3D = tf.zeros([9, NX, NY], 'float32');
-const feq: tf.Tensor3D = tf.zeros([9, NX, NY], 'float32');
+let feq: tf.Tensor3D = tf.zeros([9, NX, NY], 'float32');
 
 const d: tf.Tensor1D = tf.zeros([2], 'float32'); // displacement
 let v: tf.Tensor1D = tf.zeros([2], 'float32'); // velocity
@@ -105,7 +117,7 @@ const u0 = tf.fill([NX, NY], U0); // u[0, :, :]
 const u1 = tf.zeros([NX, NY], 'float32'); // u[1, :, :]
 
 
-const u: tf.Tensor3D = tf.stack([u0, u1], 0) as tf.Tensor3D;
+let u: tf.Tensor3D = tf.stack([u0, u1], 0) as tf.Tensor3D;
 f = lbm.getEquilibrium(rho, u)
 v = tf.tensor1d([d.arraySync()[0], 1e-2], 'float32');
 
@@ -119,12 +131,17 @@ update(f, d, v, a, h)
 
 function update(f: tf.Tensor3D, d: tf.Tensor1D, v: tf.Tensor1D, a: tf.Tensor1D, h: tf.Tensor1D)
 {
-  let {rho, u} = lbm.getMacroscopic(f);
+  const macro = lbm.getMacroscopic(f);
+  rho = macro.rho;
+  u = macro.u;
 
-  const feq = lbm.getEquilibrium(rho, u);
+  feq = lbm.getEquilibrium(rho, u);
+  f = mrt.collision(f, feq, MRT_COL_LEFT)
 
-  console.log(feq.print())
+  console.log(f.print())
 }
+
+
 
 
 
