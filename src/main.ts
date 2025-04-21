@@ -76,7 +76,7 @@ const PLOT = false;
 const PLOT_EVERY = 1000;
 const PLOT_AFTER = 0;
 
-const D = 30
+const D = 1
 const U0 = 0.1
 const TM = 60000
 
@@ -175,37 +175,6 @@ async function runSimulation(steps: number = 10) {
   }
 }
 
-export function drawCircle(
-  normX: number,   // normalized x in [0,1]
-  normY: number,   // normalized y in [0,1]
-  radiusNorm = 0.05, // normalized radius (e.g. 0.05 of width)
-  color = 'red',
-  lineWidth = 2
-) {
-  console.log("asdasd")
-  const canvas = document.getElementById('overlay') as HTMLCanvasElement;
-  const ctx    = canvas.getContext('2d')!;
-  const W      = canvas.width;
-  const H      = canvas.height;
-
-  // convert normalized to pixels
-  const x = normX * W;
-  const y = normY * H;
-  const r = radiusNorm * W; // or H, depending on aspect
-
-  // clear previous circle
-  ctx.clearRect(0, 0, W, H);
-
-  // draw new circle
-  ctx.beginPath();
-  ctx.arc(x, y, r, 0, Math.PI * 2);
-  ctx.strokeStyle = color;
-  ctx.lineWidth   = lineWidth;
-  ctx.stroke();
-}
-
-
-
 function update(f: tf.Tensor3D, d: tf.Tensor1D, v: tf.Tensor1D, a: tf.Tensor1D, h: tf.Tensor1D) :  [
   tf.Tensor3D,    // new f
   tf.Tensor2D,    // rho
@@ -276,14 +245,14 @@ function update(f: tf.Tensor3D, d: tf.Tensor1D, v: tf.Tensor1D, a: tf.Tensor1D, 
 
   [a, v, d] = dyn.newmark2dof(a, v, d, h, MASS, STIFFNESS, DAMPING)
 
-  f = lbm.streaming(f)
+  // f = lbm.streaming(f)
 
-  const feqInitFull = feq_init
-  .reshape([9, 1, 1])         // [9,1,1]
-  .tile([1, NX, NY]) as tf.Tensor3D;  // [9,NX,NY]
+  // const feqInitFull = feq_init
+  // .reshape([9, 1, 1])         // [9,1,1]
+  // .tile([1, NX, NY]) as tf.Tensor3D;  // [9,NX,NY]
 
-  f = lbm.boundaryEquilibrium(f, feqInitFull, 'right');
-  f = lbm.velocityBoundary(f, U0, 0, "left")
+  // f = lbm.boundaryEquilibrium(f, feqInitFull, 'right');
+  // f = lbm.velocityBoundary(f, U0, 0, "left")
 
   return [f, rho, u, d, v, a, h]
 }
