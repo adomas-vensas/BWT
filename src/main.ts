@@ -63,13 +63,32 @@ let angleInDeg = 45;
 
 
 
+const PLOT = false;
+const PLOT_EVERY = 1000;
+const PLOT_AFTER = 0;
 
 const D = 30
+const U0 = 0.1
+const TM = 60000
 
 const NX = 20 * D
 const NY = 10 * D
 
-const U0 = 0.1
+// Cylinder position
+const X_OBJ = 8 * D          // Cylinder x position
+const Y_OBJ = 5 * D          // Cylinder y position
+
+// IB method parameters
+const N_MARKER = 4 * D       // Number of markers on cylinder
+const N_ITER_MDF = 3         // Multi-direct forcing iterations
+const IB_MARGIN = 2          // Margin of the IB region to the cylinder
+
+// Physical parameters
+const RE = 200               // Reynolds number
+const UR = 5                 // Reduced velocity
+const MR = 10                // Mass ratio
+const DR = 0                 // Damping ratio
+
 
 
 const rho: tf.Tensor2D = tf.ones([NX, NY], 'float32');
