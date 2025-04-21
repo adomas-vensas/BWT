@@ -9,6 +9,7 @@ import * as lbm from './simulation/lbm';
 import * as tf from '@tensorflow/tfjs'
 import * as mrt from './simulation/mrt';
 import * as ib from './simulation/ib';
+import * as dyn from './simulation/dyn';
 
 const scene = new THREE.Scene();
 
@@ -204,7 +205,15 @@ function update(f: tf.Tensor3D, d: tf.Tensor1D, v: tf.Tensor1D, a: tf.Tensor1D, 
   const scale = (Math.PI * D * D) / 4;
   h = h.add(a.mul(scale)) as tf.Tensor1D;
 
-  h.print()
+  [a, v, d] = dyn.newmark2dof(a, v, d, h, MASS, STIFFNESS, DAMPING)
+
+  f = lbm.streaming(f)
+
+  const feqInitFull = feq_init
+  .reshape([9, 1, 1])         // [9,1,1]
+  .tile([1, NX, NY]) as tf.Tensor3D;  // [9,NX,NY]
+
+  f = lbm.boundaryEquilibrium(f, feqInitFull, 'right');
 
 }
 

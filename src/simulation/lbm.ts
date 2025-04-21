@@ -16,12 +16,12 @@ const VELOCITIES = tf.tensor2d([
 const WEIGHTS = tf.tensor([4/9, 1/9, 1/9, 1/9, 1/9, 1/36, 1/36, 1/36, 1/36])
 
 
-const RIGHT_DIRS = tf.tensor1d([1, 5, 8], 'int32');
-const LEFT_DIRS  = tf.tensor1d([3, 7, 6], 'int32');
-const UP_DIRS    = tf.tensor1d([2, 5, 6], 'int32');
-const DOWN_DIRS  = tf.tensor1d([4, 7, 8], 'int32');
-const ALL_DIRS   = tf.tensor1d([0, 1, 2, 3, 4, 5, 6, 7, 8], 'int32');
-const OPP_DIRS   = tf.tensor1d([0, 3, 4, 1, 2, 7, 8, 5, 6], 'int32');
+const RIGHT_DIRS = [1, 5, 8];
+const LEFT_DIRS  = [3, 7, 6];
+const UP_DIRS    = [2, 5, 6];
+const DOWN_DIRS  = [4, 7, 8];
+const ALL_DIRS   = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+const OPP_DIRS   = [0, 3, 4, 1, 2, 7, 8, 5, 6];
 
 /**
  * Compute the equilibrium distribution function feq.
@@ -135,4 +135,108 @@ export function getDiscretizedForce(
     // combine and weight
     return w9.mul(A.add(B)) as tf.Tensor3D;
   });
+}
+
+/**
+ * Perform the streaming step for D2Q9 LBM with periodic boundaries.
+ *
+ * @param f Tensor3D<[9, NX, NY]> discrete distribution functions
+ * @returns Tensor3D<[9, NX, NY]> streamed distributions
+ */
+export function streaming(f: tf.Tensor3D): tf.Tensor3D {
+  const RIGHT = new Set([1, 5, 8]);
+  const LEFT  = new Set([3, 7, 6]);
+  const UP    = new Set([2, 5, 6]);
+  const DOWN  = new Set([4, 7, 8]);
+
+  // pre‐roll f along X (axis=1) and Y (axis=2)
+  const fR = roll3d(f,  1, 1);
+  const fL = roll3d(f, -1, 1);
+  const fU = roll3d(f,  1, 2);
+  const fD = roll3d(f, -1, 2);
+
+  // rebuild each direction slice in one pass
+  const out = tf.stack(
+    Array.from({ length: 9 }, (_, d) => {
+      const dir = d as number;
+      if (RIGHT.has(dir)) return fR.gather(dir, 0);
+      if (LEFT.has(dir))  return fL.gather(dir, 0);
+      if (UP.has(dir))    return fU.gather(dir, 0);
+      if (DOWN.has(dir))  return fD.gather(dir, 0);
+      return f.gather(dir, 0);
+    }),
+    0
+  ) as tf.Tensor3D;
+
+  return out;
+}
+
+/** Roll a 3‑D tensor along one spatial axis (1 or 2). */
+function roll3d(x: tf.Tensor3D, shift: number, axis: 1 | 2): tf.Tensor3D {
+  const [d, dim0, dim1] = x.shape;
+  const dim = axis === 1 ? dim0 : dim1;
+  // normalize shift to [0, dim)
+  const s = ((shift % dim) + dim) % dim;
+  if (s === 0) return x;
+  let part1: tf.Tensor3D, part2: tf.Tensor3D;
+  if (axis === 1) {
+    part1 = x.slice([0, dim - s, 0], [d, s, dim1]);
+    part2 = x.slice([0, 0, 0],     [d, dim - s, dim1]);
+  } else {
+    part1 = x.slice([0, 0, dim - s], [d, dim0, s]);
+    part2 = x.slice([0, 0, 0],     [d, dim0, dim - s]);
+  }
+  return tf.concat([part1, part2], axis) as tf.Tensor3D;
+}
+
+/**
+ * Enforce equilibrium DDFs on the specified boundary.
+ *
+ * @param f    Input DDFs, shape [9, NX, NY]
+ * @param feq  Equilibrium DDFs, shape [9, NX, NY]
+ * @param loc  'left' | 'right' | 'top' | 'bottom'
+ */
+export function boundaryEquilibrium(
+  f:   tf.Tensor3D,
+  feq: tf.Tensor3D,
+  loc: 'left' | 'right' | 'top' | 'bottom'
+): tf.Tensor3D {
+  // break f and feq into 9 per‑direction 2D fields
+  const slices   = tf.unstack(f,   0) as tf.Tensor2D[];
+  const feqSlc   = tf.unstack(feq, 0) as tf.Tensor2D[];
+  const [_, NX, NY] = f.shape;
+
+  if (loc === 'left') {
+    for (const d of RIGHT_DIRS) {
+      // replace row x=0 with equilibrium
+      const eqRow  = feqSlc[d].slice([0, 0], [1, NY]);
+      const rest   = slices[d].slice([1, 0], [NX - 1, NY]);
+      slices[d]    = eqRow.concat(rest, 0);
+    }
+  } else if (loc === 'right') {
+    for (const d of LEFT_DIRS) {
+      // replace row x=NX-1 with equilibrium
+      const body   = slices[d].slice([0, 0], [NX - 1, NY]);
+      const eqRow  = feqSlc[d].slice([NX - 1, 0], [1, NY]);
+      slices[d]    = body.concat(eqRow, 0);
+    }
+  } else if (loc === 'top') {
+    for (const d of DOWN_DIRS) {
+      // replace col y=NY-1 with equilibrium
+      const body   = slices[d].slice([0, 0], [NX, NY - 1]);
+      const eqCol  = feqSlc[d].slice([0, NY - 1], [NX, 1]);
+      slices[d]    = body.concat(eqCol, 1);
+    }
+  } else if (loc === 'bottom') {
+    for (const d of UP_DIRS) {
+      // replace col y=0 with equilibrium
+      const eqCol  = feqSlc[d].slice([0, 0], [NX, 1]);
+      const rest   = slices[d].slice([0, 1], [NX, NY - 1]);
+      slices[d]    = eqCol.concat(rest, 1);
+    }
+  } else {
+    throw new Error("loc must be 'left', 'right', 'top', or 'bottom'");
+  }
+
+  return tf.stack(slices, 0) as tf.Tensor3D;
 }
