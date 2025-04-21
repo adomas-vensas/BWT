@@ -104,12 +104,14 @@ const OMEGA = 1 / TAU                                             // Relaxation 
 let [MRT_COL_LEFT, _] = mrt.precomputeLeftMatrices(OMEGA)
 
 
-const THETA_MARKERS = tf
-  .range(0, N_MARKER, 1, 'float32')           // [0, 1, 2, …, N_MARKER‑1]
-  .mul(2 * Math.PI / N_MARKER) as tf.Tensor1D; // scale into [0,2π)
-
+const THETA_MARKERS = tf.range(0, N_MARKER, 1, 'float32')
 const X_MARKERS = THETA_MARKERS.cos().mul(0.5 * D).add(X_OBJ) as tf.Tensor1D;
 const Y_MARKERS = THETA_MARKERS.sin().mul(0.5 * D).add(Y_OBJ) as tf.Tensor1D;
+
+const IB_START_X = Math.floor(X_OBJ - 0.5 * D - IB_MARGIN)
+const IB_START_Y = Math.floor(Y_OBJ - 0.5 * D - IB_MARGIN)
+const IB_SIZE = D + IB_MARGIN * 2
+
 
 let rho: tf.Tensor2D = tf.ones([NX, NY], 'float32');
 let f: tf.Tensor3D = tf.zeros([9, NX, NY], 'float32');
