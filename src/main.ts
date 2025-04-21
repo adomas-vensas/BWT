@@ -5,7 +5,8 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import Ground from './turbine_elements/Ground';
 import Mast from './objects/Mast';
 import Wind from './objects/Wind';
-import * as simMath from './simulation/sim';
+import * as lbm from './simulation/lbm';
+import * as tf from '@tensorflow/tfjs'
 
 const scene = new THREE.Scene();
 
@@ -58,26 +59,48 @@ controls.enableDamping = true;
 let lastUpdated = 0;
 let angleInDeg = 45;
 
-async function animate(t: number) {
 
-  var time = t / 1000;
-  if(time - lastUpdated > 60)
-  {
-    angleInDeg = fetchAngle();
-    console.log(angleInDeg)
-    wind.setAngle(angleInDeg);
-    lastUpdated = time;
-  }
+const NX = 100;
+const NY = 100;
 
-  wind.flow(t);
+const U0 = 0.1
 
-  // controls.update();
-  renderer.render( scene, camera );
-}
-renderer.setAnimationLoop( animate );
 
-function fetchAngle(): number
-{
-  const receivedAngleInDeg = Math.floor(Math.random() * 360);
-  return receivedAngleInDeg;
-}
+const rho: tf.Tensor2D = tf.ones([NX, NY], 'float32');
+
+const u0 = tf.fill([NX, NY], U0); // u[0, :, :]
+const u1 = tf.zeros([NX, NY], 'float32'); // u[1, :, :]
+const u: tf.Tensor3D = tf.stack([u0, u1], 0) as tf.Tensor3D;
+
+console.log(lbm.getEquilibrium(rho, u).print())
+
+
+
+
+
+
+
+
+// async function animate(t: number) {
+
+//   var time = t / 1000;
+//   if(time - lastUpdated > 60)
+//   {
+//     angleInDeg = fetchAngle();
+//     console.log(angleInDeg)
+//     wind.setAngle(angleInDeg);
+//     lastUpdated = time;
+//   }
+
+//   wind.flow(t);
+
+//   // controls.update();
+//   renderer.render( scene, camera );
+// }
+// renderer.setAnimationLoop( animate );
+
+// function fetchAngle(): number
+// {
+//   const receivedAngleInDeg = Math.floor(Math.random() * 360);
+//   return receivedAngleInDeg;
+// }
