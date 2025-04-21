@@ -60,19 +60,39 @@ let lastUpdated = 0;
 let angleInDeg = 45;
 
 
-const NX = 100;
-const NY = 100;
+
+
+
+
+const D = 30
+
+const NX = 20 * D
+const NY = 10 * D
 
 const U0 = 0.1
 
 
 const rho: tf.Tensor2D = tf.ones([NX, NY], 'float32');
+let f: tf.Tensor3D = tf.zeros([9, NX, NY], 'float32');
+const feq: tf.Tensor3D = tf.zeros([9, NX, NY], 'float32');
+
+const d: tf.Tensor1D = tf.zeros([2], 'float32'); // displacement
+let v: tf.Tensor1D = tf.zeros([2], 'float32'); // velocity
+const a: tf.Tensor1D = tf.zeros([2], 'float32'); // acceleration
+const h: tf.Tensor1D = tf.zeros([2], 'float32');
+
 
 const u0 = tf.fill([NX, NY], U0); // u[0, :, :]
 const u1 = tf.zeros([NX, NY], 'float32'); // u[1, :, :]
-const u: tf.Tensor3D = tf.stack([u0, u1], 0) as tf.Tensor3D;
 
-console.log(lbm.getEquilibrium(rho, u).print())
+
+const u: tf.Tensor3D = tf.stack([u0, u1], 0) as tf.Tensor3D;
+f = lbm.getEquilibrium(rho, u)
+v = tf.tensor1d([d.arraySync()[0], 1e-2], 'float32');
+
+const feq_init = f.slice([0, 0, 0], [9, 1, 1]).reshape([9]);
+// console.log(feq_init.print())
+// console.log(lbm.getEquilibrium(rho, u).print())
 
 
 
