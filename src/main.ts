@@ -144,10 +144,6 @@ const feq_init = f.slice([0, 0, 0], [9, 1, 1]).reshape([9]);
 
 update(f, d, v, a, h)
 
-// console.log(feq_init.print())
-// console.log(lbm.getEquilibrium(rho, u).print())
-console.log(tf.getBackend());
-
 function update(f: tf.Tensor3D, d: tf.Tensor1D, v: tf.Tensor1D, a: tf.Tensor1D, h: tf.Tensor1D)
 {
   const macro = lbm.getMacroscopic(f);
@@ -191,7 +187,20 @@ function update(f: tf.Tensor3D, d: tf.Tensor1D, v: tf.Tensor1D, a: tf.Tensor1D, 
     
   const g_lattice = lbm.getDiscretizedForce(g_slice, uSlice)
   const s_slice = mrt.getSource(g_lattice, MRT_SRC_LEFT)
-  console.log(g_lattice.print())
+
+  const patch = fSlice.add(s_slice);
+  const pads: Array<[number, number]> = [
+    [0, 0],                        // no padding on the “direction” axis
+    [ibx,  f.shape[1] - IB_SIZE - ibx],  // pad before and after in X
+    [iby,  f.shape[2] - IB_SIZE - iby]   // pad before and after in Y
+  ];
+  const paddedPatch = patch.pad(pads);  // now shape [9,NX,NY]
+  const regionMask = tf
+    .ones([9, IB_SIZE, IB_SIZE], 'bool')
+    .pad(pads);   // true inside the IB box, false elsewhere
+  f = tf.where(regionMask, paddedPatch, f) as tf.Tensor3D;
+
+  f.print()
 
 }
 
