@@ -110,9 +110,21 @@ f = lbm.getEquilibrium(rho, u)
 v = tf.tensor1d([d.arraySync()[0], 1e-2], 'float32');
 
 const feq_init = f.slice([0, 0, 0], [9, 1, 1]).reshape([9]);
+
+update(f, d, v, a, h)
+
 // console.log(feq_init.print())
 // console.log(lbm.getEquilibrium(rho, u).print())
 
+
+function update(f: tf.Tensor3D, d: tf.Tensor1D, v: tf.Tensor1D, a: tf.Tensor1D, h: tf.Tensor1D)
+{
+  let {rho, u} = lbm.getMacroscopic(f);
+
+  const feq = lbm.getEquilibrium(rho, u);
+
+  console.log(feq.print())
+}
 
 
 
