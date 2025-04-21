@@ -150,9 +150,10 @@ function update(f: tf.Tensor3D, d: tf.Tensor1D, v: tf.Tensor1D, a: tf.Tensor1D, 
 
   let [x_markers, y_markers] = ib.getMarkersCoords2dof(X_MARKERS, Y_MARKERS, d)
 
+  const ibStartX = d.gather(0).add(IB_START_X).floor().toInt();  // Tensor<'int32'>
+  const ibStartY = d.gather(1).add(IB_START_Y).floor().toInt(); 
 
 
-  console.log(y_markers.print())
 }
 
 
