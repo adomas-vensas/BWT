@@ -23,19 +23,19 @@ camera.lookAt(0, 0, 0);
 await tf.setBackend('webgl');
 await tf.ready();
 
-// camera.rotateY(-Math.PI/2);
-// const renderer = new THREE.WebGLRenderer({
-//   canvas: document.querySelector('#bg') as HTMLCanvasElement,
-// });
+camera.rotateY(-Math.PI/2);
+const renderer = new THREE.WebGLRenderer({
+  canvas: document.querySelector('#bg') as HTMLCanvasElement,
+});
 
-// window.addEventListener('resize', function () {
-//   camera.aspect = window.innerWidth / window.innerHeight;
-//   camera.updateProjectionMatrix();
-//   renderer.setSize(window.innerWidth, window.innerHeight);
-// });
+window.addEventListener('resize', function () {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
 
-// renderer.setPixelRatio(window.devicePixelRatio);
-// renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
 
 const axesHelper = new THREE.AxesHelper( 25 );
 scene.add(axesHelper);
@@ -61,15 +61,11 @@ const height = 3;
 
 scene.background = new THREE.Color( 'deepskyblue' );
 
-// const controls = new OrbitControls(camera, renderer.domElement);
-// controls.enableDamping = true;
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
 
 let lastUpdated = 0;
 let angleInDeg = 45;
-
-
-// await tf.setBackend('webgpu');
-// await tf.ready();
 
 
 const PLOT = false;
@@ -86,6 +82,12 @@ const NY = 10 * D
 // Cylinder position
 const X_OBJ = 8 * D          // Cylinder x position
 const Y_OBJ = 5 * D          // Cylinder y position
+
+const geometry = new THREE.SphereGeometry( D / 2, 32, 16 ); 
+const material = new THREE.MeshBasicMaterial( { color: 0xffff00 } ); 
+const sphere = new THREE.Mesh( geometry, material );
+scene.add( sphere );
+
 
 // IB method parameters
 const N_MARKER = 4 * D       // Number of markers on cylinder
@@ -149,33 +151,8 @@ const vMarkers = v.reshape([1, 2]).tile([N_MARKER, 1]);
 
 const feq_init = f.slice([0, 0, 0], [9, 1, 1]).reshape([9]);
 
-// runSimulation(1000)
 
-async function runSimulation(steps: number = 10) {
-  for (let t = 0; t < steps; t++) {
-    [f, rho, u, d, v, a, h] = update(f, d, v, a, h);
-
-    // 2) optionally plot
-    // if (PLOT && t % PLOT_EVERY === 0 && t > PLOT_AFTER)
-    {
-      // const curl = post.calculateCurl(u).transpose();     // Tensor2D<[NY,NX]>
-      // const curlData = curl.arraySync() as number[][];    // JS 2D array
-
-      // const [dx, dy] = d.arraySync() as [number, number];
-      // const cx = (X_OBJ + dx) / D;
-      // const cy = (Y_OBJ + dy) / D;
-
-      // drawCircle(cx, cy);
-
-      // // give the browser a frame to render
-      // await tf.nextFrame();
-    }
-    const [dx, dy] = d.arraySync() as [number, number];
-    console.log(dx)
-  }
-}
-
-function update(f: tf.Tensor3D, d: tf.Tensor1D, v: tf.Tensor1D, a: tf.Tensor1D, h: tf.Tensor1D) :  [
+async function updateAsync(f: tf.Tensor3D, d: tf.Tensor1D, v: tf.Tensor1D, a: tf.Tensor1D, h: tf.Tensor1D) : Promise<[
   tf.Tensor3D,    // new f
   tf.Tensor2D,    // rho
   tf.Tensor3D,    // u
@@ -183,7 +160,7 @@ function update(f: tf.Tensor3D, d: tf.Tensor1D, v: tf.Tensor1D, a: tf.Tensor1D, 
   tf.Tensor1D,    // v
   tf.Tensor1D,    // a
   tf.Tensor1D     // h
-]
+]>
 {
   const macro = lbm.getMacroscopic(f);
   rho = macro.rho;
@@ -197,8 +174,10 @@ function update(f: tf.Tensor3D, d: tf.Tensor1D, v: tf.Tensor1D, a: tf.Tensor1D, 
   const ibStartX = d.gather(0).add(IB_START_X).floor().toInt();
   const ibStartY = d.gather(1).add(IB_START_Y).floor().toInt();
 
-  const ibx = ibStartX.dataSync()[0];
-  const iby = ibStartY.dataSync()[0];
+  const ibxArr = await ibStartX.data() as Int32Array;
+  const ibyArr = await ibStartY.data() as Int32Array;
+  const ibx    = ibxArr[0];
+  const iby    = ibyArr[0];
 
   const uSlice = u.slice(
     [0,   ibx,   iby],    // begin at (0, ibx, iby)
@@ -257,9 +236,23 @@ function update(f: tf.Tensor3D, d: tf.Tensor1D, v: tf.Tensor1D, a: tf.Tensor1D, 
   return [f, rho, u, d, v, a, h]
 }
 
+let lastTime = 0
+async function animate(t: number) {
 
-// async function animate(t: number) {
+  if(t - lastTime > 500)
+  {
+    lastTime = t;
+    [f, rho, u, d, v, a, h] = await updateAsync(f, d, v, a, h);
 
+    const dArr = await d.data() as Float32Array;
+    const dx = dArr[0], dy = dArr[1];
+    const newX = (0 + dx) / D;
+    const newY = (0 + dy) / D;
+
+    sphere.position.set(newY, 0, newX);
+  }
+  // const dArr = await d.data() as Float32Array;
+  // const dx = dArr[0], dy = dArr[1];
 //   var time = t / 1000;
 //   if(time - lastUpdated > 60)
 //   {
@@ -271,10 +264,10 @@ function update(f: tf.Tensor3D, d: tf.Tensor1D, v: tf.Tensor1D, a: tf.Tensor1D, 
 
 //   wind.flow(t);
 
-//   // controls.update();
-//   renderer.render( scene, camera );
-// }
-// renderer.setAnimationLoop( animate );
+  controls.update();
+  renderer.render( scene, camera );
+}
+renderer.setAnimationLoop( animate );
 
 // function fetchAngle(): number
 // {
