@@ -8,6 +8,7 @@ import Wind from './objects/Wind';
 import * as lbm from './simulation/lbm';
 import * as tf from '@tensorflow/tfjs'
 import * as mrt from './simulation/mrt';
+import * as ib from './simulation/ib';
 
 const scene = new THREE.Scene();
 
@@ -103,6 +104,13 @@ const OMEGA = 1 / TAU                                             // Relaxation 
 let [MRT_COL_LEFT, _] = mrt.precomputeLeftMatrices(OMEGA)
 
 
+const THETA_MARKERS = tf
+  .range(0, N_MARKER, 1, 'float32')           // [0, 1, 2, …, N_MARKER‑1]
+  .mul(2 * Math.PI / N_MARKER) as tf.Tensor1D; // scale into [0,2π)
+
+const X_MARKERS = THETA_MARKERS.cos().mul(0.5 * D).add(X_OBJ) as tf.Tensor1D;
+const Y_MARKERS = THETA_MARKERS.sin().mul(0.5 * D).add(Y_OBJ) as tf.Tensor1D;
+
 let rho: tf.Tensor2D = tf.ones([NX, NY], 'float32');
 let f: tf.Tensor3D = tf.zeros([9, NX, NY], 'float32');
 let feq: tf.Tensor3D = tf.zeros([9, NX, NY], 'float32');
@@ -138,7 +146,11 @@ function update(f: tf.Tensor3D, d: tf.Tensor1D, v: tf.Tensor1D, a: tf.Tensor1D, 
   feq = lbm.getEquilibrium(rho, u);
   f = mrt.collision(f, feq, MRT_COL_LEFT)
 
-  console.log(f.print())
+  let [x_markers, y_markers] = ib.getMarkersCoords2dof(X_MARKERS, Y_MARKERS, d)
+
+
+
+  console.log(y_markers.print())
 }
 
 
