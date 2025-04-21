@@ -112,6 +112,7 @@ const Y = yr.reshape([1, NY]).tile([NX, 1]);
 const THETA_MARKERS = tf.range(0, N_MARKER, 1, 'float32')
 const X_MARKERS = THETA_MARKERS.cos().mul(0.5 * D).add(X_OBJ) as tf.Tensor1D;
 const Y_MARKERS = THETA_MARKERS.sin().mul(0.5 * D).add(Y_OBJ) as tf.Tensor1D;
+const L_ARC = D * Math.PI / N_MARKER
 
 const IB_START_X = Math.floor(X_OBJ - 0.5 * D - IB_MARGIN)
 const IB_START_Y = Math.floor(Y_OBJ - 0.5 * D - IB_MARGIN)
@@ -136,6 +137,9 @@ let u: tf.Tensor3D = tf.stack([u0, u1], 0) as tf.Tensor3D;
 f = lbm.getEquilibrium(rho, u)
 v = tf.tensor1d([d.arraySync()[0], 1e-2], 'float32');
 
+const vMarkers = v.reshape([1, 2]).tile([N_MARKER, 1]);
+
+
 const feq_init = f.slice([0, 0, 0], [9, 1, 1]).reshape([9]);
 
 update(f, d, v, a, h)
@@ -155,7 +159,7 @@ function update(f: tf.Tensor3D, d: tf.Tensor1D, v: tf.Tensor1D, a: tf.Tensor1D, 
 
   let [x_markers, y_markers] = ib.getMarkersCoords2dof(X_MARKERS, Y_MARKERS, d)
 
-  const ibStartX = d.gather(0).add(IB_START_X).floor().toInt();  // Tensor<'int32'>
+  const ibStartX = d.gather(0).add(IB_START_X).floor().toInt();
   const ibStartY = d.gather(1).add(IB_START_Y).floor().toInt();
 
   const ibx = ibStartX.dataSync()[0];
@@ -169,18 +173,22 @@ function update(f: tf.Tensor3D, d: tf.Tensor1D, v: tf.Tensor1D, a: tf.Tensor1D, 
   const XSlice = X.slice(
     [ibx,   iby],         // begin at (ibx, iby)
     [IB_SIZE, IB_SIZE]    // size (IB_SIZE, IB_SIZE)
-  );
+  ) as tf.Tensor2D;
   
   const YSlice = Y.slice(
     [ibx,   iby], 
     [IB_SIZE, IB_SIZE]
-  );
+  ) as tf.Tensor2D;
   
   const fSlice = f.slice(
     [0,   ibx,   iby], 
     [9,   IB_SIZE, IB_SIZE]
   );
-  console.log(XSlice.print())
+
+  const vMarkers = v.reshape([1,2]).tile([N_MARKER,1]) as tf.Tensor2D;
+  let [g_slice, h_markers] = ib.multiDirectForcing(uSlice, XSlice, YSlice,
+    vMarkers, x_markers, y_markers, N_MARKER, L_ARC, N_ITER_MDF, ib.kernelRange4)
+  console.log(h_markers.print())
 
 }
 
