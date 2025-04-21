@@ -103,6 +103,11 @@ const TAU = 3 * NU + 0.5                                          // Relaxation 
 const OMEGA = 1 / TAU                                             // Relaxation parameter
 let [MRT_COL_LEFT, _] = mrt.precomputeLeftMatrices(OMEGA)
 
+const xr = tf.range(0, NX, 1, 'int32');
+const yr = tf.range(0, NY, 1, 'int32');
+
+const X = xr.reshape([NX, 1]).tile([1, NY]);  // Tensor2D<[NX,NY]>
+const Y = yr.reshape([1, NY]).tile([NX, 1]);
 
 const THETA_MARKERS = tf.range(0, N_MARKER, 1, 'float32')
 const X_MARKERS = THETA_MARKERS.cos().mul(0.5 * D).add(X_OBJ) as tf.Tensor1D;
@@ -151,8 +156,31 @@ function update(f: tf.Tensor3D, d: tf.Tensor1D, v: tf.Tensor1D, a: tf.Tensor1D, 
   let [x_markers, y_markers] = ib.getMarkersCoords2dof(X_MARKERS, Y_MARKERS, d)
 
   const ibStartX = d.gather(0).add(IB_START_X).floor().toInt();  // Tensor<'int32'>
-  const ibStartY = d.gather(1).add(IB_START_Y).floor().toInt(); 
+  const ibStartY = d.gather(1).add(IB_START_Y).floor().toInt();
 
+  const ibx = ibStartX.dataSync()[0];
+  const iby = ibStartY.dataSync()[0];
+
+  const uSlice = u.slice(
+    [0,   ibx,   iby],    // begin at (0, ibx, iby)
+    [2,   IB_SIZE, IB_SIZE] // size (2, IB_SIZE, IB_SIZE)
+  );
+  
+  const XSlice = X.slice(
+    [ibx,   iby],         // begin at (ibx, iby)
+    [IB_SIZE, IB_SIZE]    // size (IB_SIZE, IB_SIZE)
+  );
+  
+  const YSlice = Y.slice(
+    [ibx,   iby], 
+    [IB_SIZE, IB_SIZE]
+  );
+  
+  const fSlice = f.slice(
+    [0,   ibx,   iby], 
+    [9,   IB_SIZE, IB_SIZE]
+  );
+  console.log(XSlice.print())
 
 }
 
