@@ -10,6 +10,8 @@ import * as tf from '@tensorflow/tfjs'
 import * as mrt from './simulation/mrt';
 import * as ib from './simulation/ib';
 import * as dyn from './simulation/dyn';
+import * as post from './simulation/post';
+import '@tensorflow/tfjs-backend-webgpu';
 
 const scene = new THREE.Scene();
 
@@ -18,19 +20,22 @@ camera.position.set(0, 30, 0);
 camera.up.set(1, 0, 0);    
 camera.lookAt(0, 0, 0);   
 
+await tf.setBackend('webgl');
+await tf.ready();
+
 // camera.rotateY(-Math.PI/2);
-const renderer = new THREE.WebGLRenderer({
-  canvas: document.querySelector('#bg') as HTMLCanvasElement,
-});
+// const renderer = new THREE.WebGLRenderer({
+//   canvas: document.querySelector('#bg') as HTMLCanvasElement,
+// });
 
-window.addEventListener('resize', function () {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
+// window.addEventListener('resize', function () {
+//   camera.aspect = window.innerWidth / window.innerHeight;
+//   camera.updateProjectionMatrix();
+//   renderer.setSize(window.innerWidth, window.innerHeight);
+// });
 
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.setSize(window.innerWidth, window.innerHeight);
+// renderer.setPixelRatio(window.devicePixelRatio);
+// renderer.setSize(window.innerWidth, window.innerHeight);
 
 const axesHelper = new THREE.AxesHelper( 25 );
 scene.add(axesHelper);
@@ -56,14 +61,15 @@ const height = 3;
 
 scene.background = new THREE.Color( 'deepskyblue' );
 
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
+// const controls = new OrbitControls(camera, renderer.domElement);
+// controls.enableDamping = true;
 
 let lastUpdated = 0;
 let angleInDeg = 45;
 
 
-
+// await tf.setBackend('webgpu');
+// await tf.ready();
 
 
 const PLOT = false;
@@ -124,10 +130,10 @@ let rho: tf.Tensor2D = tf.ones([NX, NY], 'float32');
 let f: tf.Tensor3D = tf.zeros([9, NX, NY], 'float32');
 let feq: tf.Tensor3D = tf.zeros([9, NX, NY], 'float32');
 
-const d: tf.Tensor1D = tf.zeros([2], 'float32'); // displacement
+let d: tf.Tensor1D = tf.zeros([2], 'float32'); // displacement
 let v: tf.Tensor1D = tf.zeros([2], 'float32'); // velocity
-const a: tf.Tensor1D = tf.zeros([2], 'float32'); // acceleration
-const h: tf.Tensor1D = tf.zeros([2], 'float32');
+let a: tf.Tensor1D = tf.zeros([2], 'float32'); // acceleration
+let h: tf.Tensor1D = tf.zeros([2], 'float32');
 
 
 const u0 = tf.fill([NX, NY], U0); // u[0, :, :]
@@ -143,9 +149,72 @@ const vMarkers = v.reshape([1, 2]).tile([N_MARKER, 1]);
 
 const feq_init = f.slice([0, 0, 0], [9, 1, 1]).reshape([9]);
 
-update(f, d, v, a, h)
+// runSimulation(1000)
 
-function update(f: tf.Tensor3D, d: tf.Tensor1D, v: tf.Tensor1D, a: tf.Tensor1D, h: tf.Tensor1D)
+async function runSimulation(steps: number = 10) {
+  for (let t = 0; t < steps; t++) {
+    [f, rho, u, d, v, a, h] = update(f, d, v, a, h);
+
+    // 2) optionally plot
+    // if (PLOT && t % PLOT_EVERY === 0 && t > PLOT_AFTER)
+    {
+      // const curl = post.calculateCurl(u).transpose();     // Tensor2D<[NY,NX]>
+      // const curlData = curl.arraySync() as number[][];    // JS 2D array
+
+      // const [dx, dy] = d.arraySync() as [number, number];
+      // const cx = (X_OBJ + dx) / D;
+      // const cy = (Y_OBJ + dy) / D;
+
+      // drawCircle(cx, cy);
+
+      // // give the browser a frame to render
+      // await tf.nextFrame();
+    }
+    const [dx, dy] = d.arraySync() as [number, number];
+    console.log(dx)
+  }
+}
+
+export function drawCircle(
+  normX: number,   // normalized x in [0,1]
+  normY: number,   // normalized y in [0,1]
+  radiusNorm = 0.05, // normalized radius (e.g. 0.05 of width)
+  color = 'red',
+  lineWidth = 2
+) {
+  console.log("asdasd")
+  const canvas = document.getElementById('overlay') as HTMLCanvasElement;
+  const ctx    = canvas.getContext('2d')!;
+  const W      = canvas.width;
+  const H      = canvas.height;
+
+  // convert normalized to pixels
+  const x = normX * W;
+  const y = normY * H;
+  const r = radiusNorm * W; // or H, depending on aspect
+
+  // clear previous circle
+  ctx.clearRect(0, 0, W, H);
+
+  // draw new circle
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.strokeStyle = color;
+  ctx.lineWidth   = lineWidth;
+  ctx.stroke();
+}
+
+
+
+function update(f: tf.Tensor3D, d: tf.Tensor1D, v: tf.Tensor1D, a: tf.Tensor1D, h: tf.Tensor1D) :  [
+  tf.Tensor3D,    // new f
+  tf.Tensor2D,    // rho
+  tf.Tensor3D,    // u
+  tf.Tensor1D,    // d
+  tf.Tensor1D,    // v
+  tf.Tensor1D,    // a
+  tf.Tensor1D     // h
+]
 {
   const macro = lbm.getMacroscopic(f);
   rho = macro.rho;
@@ -214,15 +283,10 @@ function update(f: tf.Tensor3D, d: tf.Tensor1D, v: tf.Tensor1D, a: tf.Tensor1D, 
   .tile([1, NX, NY]) as tf.Tensor3D;  // [9,NX,NY]
 
   f = lbm.boundaryEquilibrium(f, feqInitFull, 'right');
+  f = lbm.velocityBoundary(f, U0, 0, "left")
 
+  return [f, rho, u, d, v, a, h]
 }
-
-
-
-
-
-
-
 
 
 // async function animate(t: number) {
