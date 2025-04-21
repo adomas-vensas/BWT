@@ -69,7 +69,7 @@ async function animate(t: number) {
     lastUpdated = time;
   }
 
-  wind.flow(scene, t);
+  wind.flow(t);
 
   // controls.update();
   renderer.render( scene, camera );
