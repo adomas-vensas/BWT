@@ -26,7 +26,7 @@ export function collision(
 
     // reshape result back to [9, NX, NY]
     const collisionTerm = resultFlat.reshape([9, NX, NY]);
-
+    
     const fNew = tf.add(collisionTerm, f); // [9, NX, NY]
     return fNew as tf.Tensor3D;
   });
@@ -113,4 +113,23 @@ export function precomputeLeftMatrices(omega: number)
   const sourcingLeft = getSourceLeftMatrix(trans, relax)
 
   return [collisionLeft as tf.Tensor2D, sourcingLeft]
+}
+
+/**
+ * Compute the source term without using tensordot:
+ *   source[i,x,y] = sum_j leftMatrix[i,j] * forcing[j,x,y]
+ *
+ * @param leftMatrix Tensor2D<[9,9]>  precomputed M⁻¹·(I–0.5 S)·M
+ * @param forcing    Tensor3D<[9,NX,NY]>  forcing term per direction
+ * @returns           Tensor3D<[9,NX,NY]> the source term
+ */
+export function getSource(
+  forcing: tf.Tensor3D,
+  leftMatrix: tf.Tensor2D
+): tf.Tensor3D {
+  // flatten the spatial dims so we can do a matMul
+  const [ , nx, ny] = forcing.shape;
+  const flatForcing = forcing.reshape([9, nx * ny]);       // [9, NX*NY]
+  const flatSource  = leftMatrix.matMul(flatForcing);      // [9, NX*NY]
+  return flatSource.reshape([9, nx, ny]) as tf.Tensor3D;   // [9, NX, NY]
 }

@@ -101,7 +101,7 @@ const DAMPING = 2 * Math.sqrt(STIFFNESS * MASS) * DR              // Damping of 
 const NU = U0 * D / RE                                            // Kinematic viscosity
 const TAU = 3 * NU + 0.5                                          // Relaxation time
 const OMEGA = 1 / TAU                                             // Relaxation parameter
-let [MRT_COL_LEFT, _] = mrt.precomputeLeftMatrices(OMEGA)
+let [MRT_COL_LEFT, MRT_SRC_LEFT] = mrt.precomputeLeftMatrices(OMEGA)
 
 const xr = tf.range(0, NX, 1, 'int32');
 const yr = tf.range(0, NY, 1, 'int32');
@@ -190,6 +190,7 @@ function update(f: tf.Tensor3D, d: tf.Tensor1D, v: tf.Tensor1D, a: tf.Tensor1D, 
     vMarkers, x_markers, y_markers, N_MARKER, L_ARC, N_ITER_MDF, ib.kernelRange4);
     
   const g_lattice = lbm.getDiscretizedForce(g_slice, uSlice)
+  const s_slice = mrt.getSource(g_lattice, MRT_SRC_LEFT)
   console.log(g_lattice.print())
 
 }
