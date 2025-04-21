@@ -146,7 +146,7 @@ update(f, d, v, a, h)
 
 // console.log(feq_init.print())
 // console.log(lbm.getEquilibrium(rho, u).print())
-
+console.log(tf.getBackend());
 
 function update(f: tf.Tensor3D, d: tf.Tensor1D, v: tf.Tensor1D, a: tf.Tensor1D, h: tf.Tensor1D)
 {
@@ -187,8 +187,10 @@ function update(f: tf.Tensor3D, d: tf.Tensor1D, v: tf.Tensor1D, a: tf.Tensor1D, 
 
   const vMarkers = v.reshape([1,2]).tile([N_MARKER,1]) as tf.Tensor2D;
   let [g_slice, h_markers] = ib.multiDirectForcing(uSlice, XSlice, YSlice,
-    vMarkers, x_markers, y_markers, N_MARKER, L_ARC, N_ITER_MDF, ib.kernelRange4)
-  console.log(h_markers.print())
+    vMarkers, x_markers, y_markers, N_MARKER, L_ARC, N_ITER_MDF, ib.kernelRange4);
+    
+  const g_lattice = lbm.getDiscretizedForce(g_slice, uSlice)
+  console.log(g_lattice.print())
 
 }
 
