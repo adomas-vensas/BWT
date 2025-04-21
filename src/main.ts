@@ -200,7 +200,11 @@ function update(f: tf.Tensor3D, d: tf.Tensor1D, v: tf.Tensor1D, a: tf.Tensor1D, 
     .pad(pads);   // true inside the IB box, false elsewhere
   f = tf.where(regionMask, paddedPatch, f) as tf.Tensor3D;
 
-  f.print()
+  h = ib.getForceToObj(h_markers)
+  const scale = (Math.PI * D * D) / 4;
+  h = h.add(a.mul(scale)) as tf.Tensor1D;
+
+  h.print()
 
 }
 

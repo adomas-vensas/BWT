@@ -130,3 +130,13 @@ export function kernelRange4(d: tf.Tensor3D): tf.Tensor3D {
     const o = a.mul(-2).add(5).sub(a.mul(12).sub(a.square().mul(4)).add(-7).sqrt()).div(8);
     return tf.where(a.greater(2), tf.zerosLike(a), tf.where(a.less(1), i, o)) as tf.Tensor3D;
 }
+
+/**
+ * Compute the total hydrodynamic force on the object by summing marker forces.
+ *
+ * @param forceAtMarkers Tensor2D<[N_MARKER,2]>  – forces on each marker
+ * @returns              Tensor1D<[2]>           – total force [Fx, Fy]
+ */
+export function getForceToObj(forceAtMarkers: tf.Tensor2D): tf.Tensor1D {
+    return forceAtMarkers.sum(0) as tf.Tensor1D;
+  }
