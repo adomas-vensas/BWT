@@ -94,6 +94,9 @@ function cantileverMode(s: number) {
   return num / denom;
 }
 
+const lowerFrac = 0.1;               
+const y0 = -halfH + lowerFrac * height;
+
 async function animate(t: number) {
 
   const bendVal = 0.2 * Math.sin(t/500);
@@ -107,8 +110,8 @@ async function animate(t: number) {
     const restY = restPositions[iy];
     const restZ = restPositions[iz];
 
-    if (restY > 0) {
-      const s = restY / halfH;
+    if (restY > y0) {
+      const s = (restY - y0) / (halfH - y0);
       const w = cantileverMode(s);
       // const bendVal = swayAmp * Math.sin(2*Math.PI*swayFreq * t);
       // apply bending only to X (for example)
