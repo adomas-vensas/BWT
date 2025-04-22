@@ -9,7 +9,6 @@ export default class VIVSimulation{
 
     D = 1
     U0 = 0.1
-    TM = 60000
 
     NX = 20 * this.D
     NY = 10 * this.D
@@ -70,6 +69,8 @@ export default class VIVSimulation{
 
     L_ARC: number;
     
+    feq_init: tf.Tensor3D;
+
     constructor()
     {
         [this.MRT_COL_LEFT, this.MRT_SRC_LEFT] = mrt.precomputeLeftMatrices(this.OMEGA)
@@ -92,7 +93,7 @@ export default class VIVSimulation{
         this.v = tf.tensor1d([this.d.arraySync()[0], 1e-2], 'float32');
 
         const vMarkers = this.v.reshape([1, 2]).tile([this.N_MARKER, 1]);
-        const feq_init = this.f.slice([0, 0, 0], [9, 1, 1]).reshape([9]);
+        this.feq_init = this.f.slice([0, 0, 0], [9, 1, 1]).reshape([9]);
     }
 
     private async update() : Promise<[
@@ -168,14 +169,14 @@ export default class VIVSimulation{
     
       [this.a, this.v, this.d] = dyn.newmark2dof(this.a, this.v, this.d, this.h, this.MASS, this.STIFFNESS, this.DAMPING)
     
-    //   f = lbm.streaming(f)
+      this.f = lbm.streaming(this.f)
     
-    //   const feqInitFull = feq_init
-    //   .reshape([9, 1, 1])         // [9,1,1]
-    //   .tile([1, NX, NY]) as tf.Tensor3D;  // [9,NX,NY]
+      // const feqInitFull = this.feq_init
+      // .reshape([9, 1, 1])         // [9,1,1]this.
+      // .tile([1, this.NX, this.NY]) as tf.Tensor3D;  // [9,NX,NY]
     
-    //   f = lbm.boundaryEquilibrium(f, feqInitFull, 'right');
-    //   f = lbm.velocityBoundary(f, U0, 0, "left")
+      // this.f = lbm.boundaryEquilibrium(this.f, feqInitFull, 'right');
+      // this.f = lbm.velocityBoundary(this.f, this.U0, 0, "left")
     
       return [this.f, this.rho, this.u, this.d, this.v, this.a, this.h]
     }
@@ -187,8 +188,9 @@ export default class VIVSimulation{
         
         const dArr = await this.d.data() as Float32Array;
         const dx = dArr[0], dy = dArr[1];
-        const newX = (0 + dx * 2) / this.D;
-        const newY = (0 + dy * 2) / this.D;
+        console.log(dx, dy)
+        const newX = (0 + dx) / this.D;
+        const newY = (0 + dy) / this.D;
 
         return [newX, newY]
     }

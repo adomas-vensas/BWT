@@ -51,9 +51,6 @@ const wind = new Wind({
 });
 scene.add(...wind.getWindLines());
 
-const height = 3;
-// const mast = new Mast({ x: 0, z: 0, y: height / 2, height: height });
-// scene.add(mast);
 
 scene.background = new THREE.Color( 'deepskyblue' );
 
@@ -65,12 +62,9 @@ let angleInDeg = 45;
 
 
 const sim = new VIVSimulation();
-
-const geometry = new THREE.SphereGeometry( sim.D / 2, 32, 16 ); 
-const material = new THREE.MeshBasicMaterial( { color: 0xffff00 } ); 
-const sphere = new THREE.Mesh( geometry, material );
-scene.add( sphere );
-
+const height = 3;
+const mast = new Mast({ x: 0, z: 0, y: height / 2, radius: sim.D / 2, height: height });
+scene.add(mast);
 
 let lastTime = 0
 async function animate(t: number) {
@@ -80,7 +74,7 @@ async function animate(t: number) {
     lastTime = t;
     let [newX, newY] = await sim.updateAsync();
 
-    sphere.position.set(newY, 0, newX);
+    mast.position.set(newY, height/2, newX);
     tf.nextFrame()
   }
 
