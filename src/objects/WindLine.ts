@@ -57,6 +57,9 @@ export default class WindLine extends THREE.Mesh {
         this.d_x = Math.random() * this.space - this.space / 2 
         
         this.material = options.texture;
+
+        // const t = new MeshLineMaterial({resolution: new THREE.Vector2(512, 1)})
+        // console.log(t.vertexShader);
     }
 
     public rotateLine(destinationAngleInDeg: number, rotationStepInDeg: number)

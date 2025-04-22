@@ -41,7 +41,7 @@ export default class Wind extends THREE.Mesh{
         return this._windLines;
     }
 
-    public flow(scene: THREE.Scene, timeInMs: number)
+    public flow(timeInMs: number)
     {
         for(var line of this._windLines)
         {
