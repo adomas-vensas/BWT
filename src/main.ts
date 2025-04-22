@@ -83,7 +83,20 @@ const halfH          = height / 2;
 const swayAmp = 0.5;
 const swayFreq= 1.0;
 
+
+const β = 1.875104071;  
+const A = (Math.cosh(β) + Math.cos(β)) / (Math.sinh(β) + Math.sin(β));
+const denom = Math.cosh(β) - Math.cos(β) - A * (Math.sinh(β) - Math.sin(β));
+
+function cantileverMode(s: number) {
+  const num = Math.cosh(β * s) - Math.cos(β * s)
+            - A * (Math.sinh(β * s) - Math.sin(β * s));
+  return num / denom;
+}
+
 async function animate(t: number) {
+
+  const bendVal = 0.2 * Math.sin(t/500);
 
   for (let i = 0; i < positions.count; i++) {
     const ix    = 3*i + 0;
@@ -95,14 +108,11 @@ async function animate(t: number) {
     const restZ = restPositions[iz];
 
     if (restY > 0) {
-      const k = 0.02;
-
-      // compute normalized weight in [0…1]
-      const a = restY / halfH;
-      const w = (Math.exp(k * a) - 1) / (Math.exp(k) - 1);         
+      const s = restY / halfH;
+      const w = cantileverMode(s);
       // const bendVal = swayAmp * Math.sin(2*Math.PI*swayFreq * t);
       // apply bending only to X (for example)
-      positions.array[iz] = restZ + 0.2 * Math.sin(t/200) * w;
+      positions.array[iz] = restZ + bendVal * w;
     } else {
       // leave the bottom half exactly as it was
       positions.array[iz] = restZ;
