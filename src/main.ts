@@ -8,6 +8,7 @@ import Wind from './objects/Wind';
 import * as tf from '@tensorflow/tfjs'
 import VIVSimulation from './simulation/VIVSimulation';
 import '@tensorflow/tfjs-backend-webgpu';
+import { GeometryCompressionUtils } from 'three/examples/jsm/Addons';
 
 const scene = new THREE.Scene();
 
@@ -67,16 +68,62 @@ const mast = new Mast({ x: 0, z: 0, y: height / 2, radius: sim.D / 2, height: he
 scene.add(mast);
 
 let lastTime = 0
+
+const heightSegments = (mast.geometry as THREE.CylinderGeometry).parameters.heightSegments;
+const radialSegments = (mast.geometry as THREE.CylinderGeometry).parameters.radialSegments;
+
+const numRings = heightSegments + 1
+const vertsPerRing = radialSegments + 1;
+
+const positions = mast.geometry.attributes.position;
+const restPositions  = positions.array.slice(); // Float32Array copy
+
+const halfH          = height / 2;
+
+const swayAmp = 0.5;
+const swayFreq= 1.0;
+
 async function animate(t: number) {
 
-  if(t - lastTime > 500)
-  {
-    lastTime = t;
-    let [newX, newY] = await sim.updateAsync();
+  for (let i = 0; i < positions.count; i++) {
+    const ix    = 3*i + 0;
+    const iy    = 3*i + 1;
+    const iz    = 3*i + 2;
 
-    mast.position.set(newY, height/2, newX);
-    tf.nextFrame()
+    const restX = restPositions[ix];
+    const restY = restPositions[iy];
+    const restZ = restPositions[iz];
+
+    if (restY > 0) {
+      const k = 0.02;
+
+      // compute normalized weight in [0…1]
+      const a = restY / halfH;
+      const w = (Math.exp(k * a) - 1) / (Math.exp(k) - 1);         
+      // const bendVal = swayAmp * Math.sin(2*Math.PI*swayFreq * t);
+      // apply bending only to X (for example)
+      positions.array[iz] = restZ + 0.2 * Math.sin(t/200) * w;
+    } else {
+      // leave the bottom half exactly as it was
+      positions.array[iz] = restZ;
+    }
+  
+    // we leave Y and Z alone
+    positions.array[ix] = restX;
+    positions.array[iy] = restY;
   }
+
+  positions.needsUpdate = true;
+  mast.geometry.computeVertexNormals();
+
+  // if(t - lastTime > 500)
+  // {
+  //   lastTime = t;
+  //   let [newX, newY] = await sim.updateAsync();
+
+  //   mast.position.set(newY, height/2, newX);
+  //   tf.nextFrame()
+  // }
 
   // const dArr = await d.data() as Float32Array;
   // const dx = dArr[0], dy = dArr[1];
