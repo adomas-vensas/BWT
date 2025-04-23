@@ -127,9 +127,15 @@ export function getSource(
   forcing: tf.Tensor3D,
   leftMatrix: tf.Tensor2D
 ): tf.Tensor3D {
-  // flatten the spatial dims so we can do a matMul
-  const [ , nx, ny] = forcing.shape;
-  const flatForcing = forcing.reshape([9, nx * ny]);       // [9, NX*NY]
-  const flatSource  = leftMatrix.matMul(flatForcing);      // [9, NX*NY]
-  return flatSource.reshape([9, nx, ny]) as tf.Tensor3D;   // [9, NX, NY]
+  return tf.tidy(() => {
+    // flatten spatial dims: [9, NX*NY]
+    const [d0, d1, d2] = forcing.shape;
+    const flatF = forcing.reshape([d0, d1 * d2]); // [9, NX*NY]
+
+    // matMul: leftMatrix [9×9] × flatF [9×(NX*NY)] → [9×(NX*NY)]
+    const flatSrc = leftMatrix.matMul(flatF);
+
+    // restore shape [9, NX, NY]
+    return flatSrc.reshape([d0, d1, d2]) as tf.Tensor3D;
+  });
 }

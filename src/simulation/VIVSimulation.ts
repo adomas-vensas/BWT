@@ -7,7 +7,7 @@ import * as post from './post';
 
 export default class VIVSimulation{
 
-    D = 20
+    D = 1
     U0 = 0.1
 
     NX = 20 * this.D
@@ -88,9 +88,9 @@ export default class VIVSimulation{
         this.IB_SIZE = this.D + this.IB_MARGIN * 2
         
         this.f = lbm.getEquilibrium(this.rho, this.u)
+
         this.v = tf.tensor1d([this.d.arraySync()[0], 1e-2], 'float32');
 
-        const vMarkers = this.v.reshape([1, 2]).tile([this.N_MARKER, 1]);
         this.feq_init = this.f.slice([0, 0, 0], [9, 1, 1]).reshape([9]);
     }
 
@@ -109,34 +109,19 @@ export default class VIVSimulation{
       this.u = u;
 
       this.feq = lbm.getEquilibrium(this.rho, this.u);
+      
       this.f = mrt.collision(this.f, this.feq, this.MRT_COL_LEFT)
-
-      // console.log("feq")
-      // console.log(this.feq.size)
-      // tf.sum(this.feq).print()
-      // this.feq.print()
-      // console.log("f")
-      // console.log(this.f.size)
-      // tf.sum(this.f).print()
-
       
       let [x_markers, y_markers] = ib.getMarkersCoords2dof(this.X_MARKERS, this.Y_MARKERS, this.d)
-
-      console.log("x_markers")
-      x_markers.print()
-      console.log("y_markers")
-      y_markers.print()
-
-
-      return [this.f, this.rho, this.u, this.d, this.v, this.a, this.h]
+      
       const ibStartX = this.d.gather(0).add(this.IB_START_X).floor().toInt();
       const ibStartY = this.d.gather(1).add(this.IB_START_Y).floor().toInt();
-    
+      
       const ibxArr = await ibStartX.data() as Int32Array;
       const ibyArr = await ibStartY.data() as Int32Array;
       const ibx    = ibxArr[0];
       const iby    = ibyArr[0];
-    
+      
       const uSlice = this.u.slice(
         [0,   ibx,   iby],    // begin at (0, ibx, iby)
         [2,   this.IB_SIZE, this.IB_SIZE] // size (2, IB_SIZE, IB_SIZE)
@@ -156,52 +141,46 @@ export default class VIVSimulation{
         [0,   ibx,   iby], 
         [9,   this.IB_SIZE, this.IB_SIZE]
       );
-    
+      
       const vMarkers = this.v.reshape([1,2]).tile([this.N_MARKER,1]) as tf.Tensor2D;
       let [g_slice, h_markers] = ib.multiDirectForcing(uSlice, XSlice, YSlice,
         vMarkers, x_markers, y_markers, this.N_MARKER, this.L_ARC, this.N_ITER_MDF, ib.kernelRange4);
         
       const g_lattice = lbm.getDiscretizedForce(g_slice, uSlice)
       const s_slice = mrt.getSource(g_lattice, this.MRT_SRC_LEFT)
-    
-      const patch = fSlice.add(s_slice);
-      const pads: Array<[number, number]> = [
-        [0, 0],                        // no padding on the “direction” axis
-        [ibx,  this.f.shape[1] - this.IB_SIZE - ibx],  // pad before and after in X
-        [iby,  this.f.shape[2] - this.IB_SIZE - iby]   // pad before and after in Y
-      ];
-      const paddedPatch = patch.pad(pads);  // now shape [9,NX,NY]
-      const regionMask = tf
-        .ones([9, this.IB_SIZE, this.IB_SIZE], 'bool')
-        .pad(pads);   // true inside the IB box, false elsewhere
-      this.f = tf.where(regionMask, paddedPatch, this.f) as tf.Tensor3D;
-    
+        
+      const patch = fSlice.add(s_slice) as tf.Tensor3D;
+      this.f = this.dynamicUpdateSlice(this.f, patch, [0, ibx, iby])
+      
       this.h = ib.getForceToObj(h_markers)
       const scale = (Math.PI * this.D * this.D) / 4;
       this.h = this.h.add(this.a.mul(scale)) as tf.Tensor1D;
-    
+      
       [this.a, this.v, this.d] = dyn.newmark2dof(this.a, this.v, this.d, this.h, this.MASS, this.STIFFNESS, this.DAMPING)
-    
+      
       this.f = lbm.streaming(this.f)
+      
+
+      const feqInitFull = this.feq_init
+      .reshape([9, 1, 1])         // [9,1,1]this.
+      .tile([1, this.NX, this.NY]) as tf.Tensor3D;  // [9,NX,NY]
     
-      // const feqInitFull = this.feq_init
-      // .reshape([9, 1, 1])         // [9,1,1]this.
-      // .tile([1, this.NX, this.NY]) as tf.Tensor3D;  // [9,NX,NY]
-    
-      // this.f = lbm.boundaryEquilibrium(this.f, feqInitFull, 'right');
-      // this.f = lbm.velocityBoundary(this.f, this.U0, 0, "left")
-    
+      this.f = lbm.boundaryEquilibrium(this.f, feqInitFull, 'right');
+      this.f = lbm.velocityBoundary(this.f, this.U0, 0, "left")
+      
       return [this.f, this.rho, this.u, this.d, this.v, this.a, this.h]
     }
 
-
+    
     public async updateAsync() : Promise<[number, number]>
     {
         [this.f, this.rho, this.u, this.d, this.v, this.a, this.h] = await this.update();
         
+        const curlT = post.calculateCurl(this.u).transpose() as tf.Tensor2D;
+
         const dArr = await this.d.data() as Float32Array;
         const dx = dArr[0], dy = dArr[1];
-        // console.log(dx, dy)
+        console.log(dx, dy)
         const newX = (0 + dx) / this.D;
         const newY = (0 + dy) / this.D;
 
@@ -233,4 +212,35 @@ export default class VIVSimulation{
         return [xMarkers, yMarkers];
       });
     }
+
+    /**
+   * Replace a sub-tensor inside a bigger tensor, analogous to JAX's dynamic_update_slice.
+   *
+   * @param base    the original Tensor of shape [D0, D1, D2…]
+   * @param patch   a smaller Tensor whose shape must match `size`
+   * @param begin   a number[] giving the start indices in each dimension
+   * @returns       a new Tensor with `patch` copied into `base` at `begin`
+   */
+  private dynamicUpdateSlice(
+    base: tf.Tensor3D,
+    patch: tf.Tensor3D,
+    begin: [number, number, number]    // exactly 3 dims here
+  ): tf.Tensor3D {
+    return tf.tidy(() => {
+      const [D0, D1, D2] = base.shape;
+      const [P0, P1, P2] = patch.shape;
+
+      // explicitly type as array of three [before, after] tuples
+      const paddings: [ [number,number], [number,number], [number,number] ] = [
+        [ begin[0], D0 - P0 - begin[0] ],
+        [ begin[1], D1 - P1 - begin[1] ],
+        [ begin[2], D2 - P2 - begin[2] ],
+      ];
+
+      const paddedPatch = patch.pad(paddings);
+      const mask = tf.ones(patch.shape, 'bool').pad(paddings);
+
+      return tf.where(mask, paddedPatch, base) as tf.Tensor3D;
+    });
+  }
 }

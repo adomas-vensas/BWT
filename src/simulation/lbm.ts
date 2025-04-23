@@ -108,31 +108,27 @@ export function getDiscretizedForce(
   u: tf.Tensor3D
 ): tf.Tensor3D {
   return tf.tidy(() => {
-    // unpack velocity and force components: each is Tensor2D<[NX,NY]>
-    const [u0, u1] = tf.unstack(u, 0) as [tf.Tensor2D, tf.Tensor2D];
-    const [g0, g1] = tf.unstack(g, 0) as [tf.Tensor2D, tf.Tensor2D];
+    // extract ux, uy: each [NX,NY] lifted to [1,NX,NY]
+    const ux = u.slice([0, 0, 0], [1, -1, -1]);
+    const uy = u.slice([1, 0, 0], [1, -1, -1]);
 
-    // pull out direction vectors & weights, reshape to [9,1,1]
-    const vx = VELOCITIES.slice([0, 0], [9, 1]).reshape([9, 1, 1]);
-    const vy = VELOCITIES.slice([0, 1], [9, 1]).reshape([9, 1, 1]);
+    // direction vectors [9,1,1]
+    const ex = VELOCITIES.slice([0, 0], [9, 1]).reshape([9, 1, 1]);
+    const ey = VELOCITIES.slice([0, 1], [9, 1]).reshape([9, 1, 1]);
+
+    // project u onto each direction: uc[d,x,y] = ux[x,y]*ex[d] + uy[x,y]*ey[d]
+    const uc = ex.mul(ux).add(ey.mul(uy)); // [9,NX,NY]
+
+    // lift g0, g1 to [1,NX,NY]
+    const g0 = g.slice([0, 0, 0], [1, -1, -1]);
+    const g1 = g.slice([1, 0, 0], [1, -1, -1]);
+
+    // build bracketed terms A and B: each [9,NX,NY]
+    const A = ex.sub(ux).mul(3).add(uc.mul(ex).mul(9)).mul(g0);
+    const B = ey.sub(uy).mul(3).add(uc.mul(ey).mul(9)).mul(g1);
+
+    // weight and combine: WEIGHTS [9] → [9,1,1]
     const w9 = WEIGHTS.reshape([9, 1, 1]);
-
-    // lift u0,u1,g0,g1 to 3D: [1,NX,NY] → broadcastable against [9,NX,NY]
-    const u0e = u0.expandDims(0);
-    const u1e = u1.expandDims(0);
-    const g0e = g0.expandDims(0);
-    const g1e = g1.expandDims(0);
-
-    // projection u·e for each direction: uc[d,x,y] = u0[x,y]*vx[d] + u1[x,y]*vy[d]
-    const uc = u0e.mul(vx).add(u1e.mul(vy));
-
-    // build the two bracketed terms:
-    //   A = 3*(e_x − u) + 9*(uc * e_x)    modulated by g0
-    //   B = 3*(e_y − u) + 9*(uc * e_y)    modulated by g1
-    const A = vx.sub(u0e).mul(3).add(uc.mul(vx).mul(9)).mul(g0e);
-    const B = vy.sub(u1e).mul(3).add(uc.mul(vy).mul(9)).mul(g1e);
-
-    // combine and weight
     return w9.mul(A.add(B)) as tf.Tensor3D;
   });
 }
