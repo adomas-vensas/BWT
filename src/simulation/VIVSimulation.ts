@@ -7,7 +7,7 @@ import * as post from './post';
 
 export default class VIVSimulation{
 
-    D = 1
+    D = 20
     U0 = 0.1
 
     NX = 20 * this.D
@@ -79,10 +79,8 @@ export default class VIVSimulation{
         
         this.X = xr.reshape([this.NX, 1]).tile([1, this.NY]);  // Tensor2D<[NX,NY]>
         this.Y = yr.reshape([1, this.NY]).tile([this.NX, 1]);
-        
-        const THETA_MARKERS = tf.range(0, this.N_MARKER, 1, 'float32')
-        this.X_MARKERS = THETA_MARKERS.cos().mul(0.5 * this.D).add(this.X_OBJ) as tf.Tensor1D;
-        this.Y_MARKERS = THETA_MARKERS.sin().mul(0.5 * this.D).add(this.Y_OBJ) as tf.Tensor1D;
+
+        [this.X_MARKERS, this.Y_MARKERS] = this.makeCircleMarkers(this.N_MARKER, this.D, this.X_OBJ, this.Y_OBJ);
         this.L_ARC = this.D * Math.PI / this.N_MARKER
         
         this.IB_START_X = Math.floor(this.X_OBJ - 0.5 * this.D - this.IB_MARGIN)
@@ -106,16 +104,31 @@ export default class VIVSimulation{
       tf.Tensor1D     // h
     ]>
     {
-      const macro = lbm.getMacroscopic(this.f);
-      this.rho = macro.rho;
-      this.rho = macro.rho;
-      this.u = macro.u;
-    
+      const [rho, u] = lbm.getMacroscopic(this.f);
+      this.rho = rho;
+      this.u = u;
+
       this.feq = lbm.getEquilibrium(this.rho, this.u);
       this.f = mrt.collision(this.f, this.feq, this.MRT_COL_LEFT)
-    
+
+      // console.log("feq")
+      // console.log(this.feq.size)
+      // tf.sum(this.feq).print()
+      // this.feq.print()
+      // console.log("f")
+      // console.log(this.f.size)
+      // tf.sum(this.f).print()
+
+      
       let [x_markers, y_markers] = ib.getMarkersCoords2dof(this.X_MARKERS, this.Y_MARKERS, this.d)
-    
+
+      console.log("x_markers")
+      x_markers.print()
+      console.log("y_markers")
+      y_markers.print()
+
+
+      return [this.f, this.rho, this.u, this.d, this.v, this.a, this.h]
       const ibStartX = this.d.gather(0).add(this.IB_START_X).floor().toInt();
       const ibStartY = this.d.gather(1).add(this.IB_START_Y).floor().toInt();
     
@@ -188,10 +201,36 @@ export default class VIVSimulation{
         
         const dArr = await this.d.data() as Float32Array;
         const dx = dArr[0], dy = dArr[1];
-        console.log(dx, dy)
+        // console.log(dx, dy)
         const newX = (0 + dx) / this.D;
         const newY = (0 + dy) / this.D;
 
         return [newX, newY]
+    }
+
+
+    private makeCircleMarkers(
+      N_MARKER: number,
+      D:       number,
+      X_OBJ:   number,
+      Y_OBJ:   number
+    ): [tf.Tensor1D, tf.Tensor1D] {
+      return tf.tidy(() => {
+        // angles 0 … 2π, exclusive of endpoint
+        const theta = tf.range(0, N_MARKER, 1, 'float32')
+                .mul(2 * Math.PI / N_MARKER) as tf.Tensor1D;
+    
+        // compute offsets
+        const radius = 0.5 * D;
+        const cosT   = theta.cos();
+        const sinT   = theta.sin();
+
+    
+        // shift by center
+        const xMarkers = cosT.mul(radius).add(X_OBJ) as tf.Tensor1D;
+        const yMarkers = sinT.mul(radius).add(Y_OBJ) as tf.Tensor1D;
+    
+        return [xMarkers, yMarkers];
+      });
     }
 }

@@ -14,21 +14,21 @@ export function collision(
   leftMatrix: tf.Tensor2D
 ): tf.Tensor3D {
   return tf.tidy(() => {
-    const delta = tf.sub(feq, f); // [9, NX, NY]
+    // delta = feq - f, shape [9, NX, NY]
+    const delta = feq.sub(f);
 
-    const [_, NX, NY] = delta.shape;
+    // reshape [9, NX*NY] so we can matMul
+    const [d0, d1, d2] = delta.shape;
+    const flatDelta = delta.reshape([d0, d1 * d2]); // [9, NX*NY]
 
-    // delta: [9, NX, NY] → [9, NX * NY]
-    const deltaFlat = delta.reshape([9, NX * NY]); // shape [9, NX*NY]
+    // apply leftMatrix · delta, yields [9, NX*NY]
+    const collidedFlat = leftMatrix.matMul(flatDelta);
 
-    // leftMatrix: [9, 9]
-    const resultFlat = tf.matMul(leftMatrix, deltaFlat); // shape [9, NX*NY]
+    // reshape back to [9, NX, NY]
+    const collided = collidedFlat.reshape([d0, d1, d2]);
 
-    // reshape result back to [9, NX, NY]
-    const collisionTerm = resultFlat.reshape([9, NX, NY]);
-    
-    const fNew = tf.add(collisionTerm, f); // [9, NX, NY]
-    return fNew as tf.Tensor3D;
+    // f_post = f + collided
+    return f.add(collided) as tf.Tensor3D;
   });
 }
 
