@@ -88,9 +88,6 @@ const restPositions  = positions.array.slice(); // Float32Array copy
 
 const halfH          = height / 2;
 
-const swayAmp = 0.5;
-const swayFreq= 1.0;
-
 const β = 1.875104071;  
 const A = (Math.cosh(β) + Math.cos(β)) / (Math.sinh(β) + Math.sin(β));
 const denom = Math.cosh(β) - Math.cos(β) - A * (Math.sinh(β) - Math.sin(β));
@@ -104,27 +101,30 @@ function cantileverMode(s: number) {
 const lowerFrac = 0.1;               
 const y0 = -halfH + lowerFrac * height;
 
-let targetX = mast.position.x;
-let targetZ = mast.position.z;
 const reachThreshold = 0.95;
 let awaitingUpdate = false;
 
 const markers: THREE.Mesh[] = [];
 const maxMarkers = 10;
 
+
 function requestNextTarget() {
   awaitingUpdate = true;
 
   sim.updateAsync().then(([newZ, newX]) => {
+    lastPosX = targetX;
+    lastPosZ = targetZ;
+
     targetX = newX;
     targetZ = newZ;
+
     awaitingUpdate = false;
 
     const marker = new THREE.Mesh(
       new THREE.SphereGeometry(0.15, 16, 16),
       new THREE.MeshBasicMaterial({ color: new THREE.Color(Math.random(), Math.random(), Math.random()) })
     );
-    marker.position.set(targetZ, 2.5, targetX);
+    marker.position.set(targetX, 2.5, targetZ);
     scene.add(marker);
     markers.push(marker);
 
@@ -136,21 +136,34 @@ function requestNextTarget() {
 }
 
 
-// await requestNextTarget();
 let lastTime = 0;
-let stepRatio = 0.50
+let stepRatio = 0.001
 let k = 1;
 
-targetZ = Math.random() * 10;
-targetX = Math.random() * 10;
+const domain = 2;
+
+
+let targetZ:number = 0, targetX:number = 0;
+let lastPosZ:number = targetZ, lastPosX:number = targetX;
+
+// targetZ = Math.random() * domain - domain/2;
+// targetX = Math.random() * domain - domain/2;
+
+// lastPosZ = targetZ;
+// lastPosX = targetX;
+await requestNextTarget();
 
 async function animate(t: number) {
-  // console.log(targetZ, targetX)
+  // const bendValZ = targetZ * stepRatio;
+  // const bendValX = targetX * stepRatio;
 
-  const bendValZ = targetZ * stepRatio * Math.sin(t/500);
-  const bendValX = targetX * stepRatio * Math.sin(t/500);
+  const progress = Math.min(stepRatio, 1); // Clamp progress to 1
 
-  // console.log(bendValZ, bendValX)
+  // Interpolated tip position
+  const deltaX = targetX - lastPosX;
+  const deltaZ = targetZ - lastPosZ;
+  const interpX = lastPosX + deltaX * progress;
+  const interpZ = lastPosZ + deltaZ * progress;
 
   for (let i = 0; i < positions.count; i++) {
     const ix    = 3*i + 0;
@@ -165,11 +178,11 @@ async function animate(t: number) {
       const s = (restY - y0) / (halfH - y0);
       const w = cantileverMode(s);
 
-      const newZ = restZ + bendValZ * w;
-      const newX = restX + bendValX * w;
+      const newZ = interpZ * w;
+      const newX = interpX * w;
 
-      positions.array[iz] = newZ;
-      positions.array[ix] = newX;
+      positions.array[iz] = restZ + newZ;
+      positions.array[ix] = restX + newX;
     } else {
       positions.array[iz] = restZ;
       positions.array[ix] = restX;
@@ -182,13 +195,7 @@ async function animate(t: number) {
   positions.needsUpdate = true;
   mast.geometry.computeVertexNormals();
 
-  // if(t - lastTime > 10000)
-  // {
-  //   targetZ = Math.random() * 10;
-  //   targetX = Math.random() * 10;
 
-  //   lastTime = t;
-  // }
 
   frameCount++;
   const now = performance.now();
@@ -200,16 +207,21 @@ async function animate(t: number) {
     fpsElem.innerText = `FPS: ${fps}`;
   }
 
-  if(t - lastTime > 1000 && !awaitingUpdate)
+  if(t - lastTime > 15000 || stepRatio >= reachThreshold)
+  // if(t - lastTime > 15000 && !awaitingUpdate)
   {
-    // await sim.updateAsync();
-    await requestNextTarget();
-    // tf.nextFrame();
-    // targetZ = Math.random() * 10;
-    // targetX = Math.random() * 10;
+    requestNextTarget();
+    // lastPosZ = targetZ;
+    // lastPosX = targetX;
+    // targetZ = Math.random() * domain - domain/2;
+    // targetX = Math.random() * domain - domain/2;
+    // console.log(targetZ, targetX)
 
-    // lastTime = t;
+    lastTime = t;
+    stepRatio = 0
   }
+
+  stepRatio += 0.01
 
   // const lerpFactor = 0.02;  // tune to control how fast you move to target
   // mast.position.x += (targetX - mast.position.x) * lerpFactor;
@@ -227,6 +239,8 @@ async function animate(t: number) {
   renderer.render( scene, camera );
 }
 renderer.setAnimationLoop( animate );
+
+
 
 // function fetchAngle(): number
 // {

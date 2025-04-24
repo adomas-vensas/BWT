@@ -24,10 +24,10 @@ export default class VIVSimulation{
     IB_MARGIN = 2          // Margin of the IB region to the cylinder
 
     // Physical parameters
-    RE = 750.878               // Reynolds number
+    RE = 1_400_000               // Reynolds number
     UR = 5                 // Reduced velocity
     MR = 10                // Mass ratio
-    DR = 5                 // Damping ratio
+    DR = 0                 // Damping ratio
 
     // structural parameters
     FN = this.U0 / (this.UR * this.D)                                          // Natural frequency
