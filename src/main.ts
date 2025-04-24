@@ -8,7 +8,6 @@ import Wind from './objects/Wind';
 import * as tf from '@tensorflow/tfjs'
 import VIVSimulation from './simulation/VIVSimulation';
 import '@tensorflow/tfjs-backend-webgpu';
-import { GeometryCompressionUtils } from 'three/examples/jsm/Addons';
 
 const scene = new THREE.Scene();
 
@@ -17,8 +16,29 @@ camera.position.set(0, 30, 0);
 camera.up.set(1, 0, 0);    
 camera.lookAt(0, 0, 0);   
 
+
+let lastFpsUpdate = performance.now();
+let frameCount = 0;
+let fps = 0;
+
+const fpsElem = document.createElement('div');
+fpsElem.style.position = 'absolute';
+fpsElem.style.top = '10px';
+fpsElem.style.left = '10px';
+fpsElem.style.color = 'white';
+fpsElem.style.fontFamily = 'monospace';
+fpsElem.style.fontSize = '16px';
+fpsElem.style.backgroundColor = 'rgba(0,0,0,0.5)';
+fpsElem.style.padding = '4px 8px';
+fpsElem.style.borderRadius = '4px';
+fpsElem.style.zIndex = '999';
+fpsElem.innerText = 'FPS: ...';
+document.body.appendChild(fpsElem);
+
+
 await tf.setBackend('webgl');
 await tf.ready();
+console.log(tf.getBackend())
 
 camera.rotateY(-Math.PI/2);
 const renderer = new THREE.WebGLRenderer({
@@ -58,22 +78,10 @@ scene.background = new THREE.Color( 'deepskyblue' );
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
-let lastUpdated = 0;
-let angleInDeg = 45;
-
-
 const sim = new VIVSimulation();
 const height = 3;
 const mast = new Mast({ x: 0, z: 0, y: height / 2, radius: sim.D / 2, height: height });
 scene.add(mast);
-
-let lastTime = 0
-
-const heightSegments = (mast.geometry as THREE.CylinderGeometry).parameters.heightSegments;
-const radialSegments = (mast.geometry as THREE.CylinderGeometry).parameters.radialSegments;
-
-const numRings = heightSegments + 1
-const vertsPerRing = radialSegments + 1;
 
 const positions = mast.geometry.attributes.position;
 const restPositions  = positions.array.slice(); // Float32Array copy
@@ -82,7 +90,6 @@ const halfH          = height / 2;
 
 const swayAmp = 0.5;
 const swayFreq= 1.0;
-
 
 const β = 1.875104071;  
 const A = (Math.cosh(β) + Math.cos(β)) / (Math.sinh(β) + Math.sin(β));
@@ -97,9 +104,53 @@ function cantileverMode(s: number) {
 const lowerFrac = 0.1;               
 const y0 = -halfH + lowerFrac * height;
 
-async function animate(t: number) {
+let targetX = mast.position.x;
+let targetZ = mast.position.z;
+const reachThreshold = 0.95;
+let awaitingUpdate = false;
 
-  const bendVal = 0.2 * Math.sin(t/500);
+const markers: THREE.Mesh[] = [];
+const maxMarkers = 10;
+
+function requestNextTarget() {
+  awaitingUpdate = true;
+
+  sim.updateAsync().then(([newZ, newX]) => {
+    targetX = newX;
+    targetZ = newZ;
+    awaitingUpdate = false;
+
+    const marker = new THREE.Mesh(
+      new THREE.SphereGeometry(0.15, 16, 16),
+      new THREE.MeshBasicMaterial({ color: new THREE.Color(Math.random(), Math.random(), Math.random()) })
+    );
+    marker.position.set(targetZ, 2.5, targetX);
+    scene.add(marker);
+    markers.push(marker);
+
+    if (markers.length > maxMarkers) {
+      const old = markers.shift();
+      scene.remove(old!);
+    }
+  });
+}
+
+
+// await requestNextTarget();
+let lastTime = 0;
+let stepRatio = 0.50
+let k = 1;
+
+targetZ = Math.random() * 10;
+targetX = Math.random() * 10;
+
+async function animate(t: number) {
+  // console.log(targetZ, targetX)
+
+  const bendValZ = targetZ * stepRatio * Math.sin(t/500);
+  const bendValX = targetX * stepRatio * Math.sin(t/500);
+
+  // console.log(bendValZ, bendValX)
 
   for (let i = 0; i < positions.count; i++) {
     const ix    = 3*i + 0;
@@ -113,43 +164,64 @@ async function animate(t: number) {
     if (restY > y0) {
       const s = (restY - y0) / (halfH - y0);
       const w = cantileverMode(s);
-      // const bendVal = swayAmp * Math.sin(2*Math.PI*swayFreq * t);
-      // apply bending only to X (for example)
-      positions.array[iz] = restZ + bendVal * w;
+
+      const newZ = restZ + bendValZ * w;
+      const newX = restX + bendValX * w;
+
+      positions.array[iz] = newZ;
+      positions.array[ix] = newX;
     } else {
-      // leave the bottom half exactly as it was
       positions.array[iz] = restZ;
+      positions.array[ix] = restX;
     }
   
-    // we leave Y and Z alone
-    positions.array[ix] = restX;
+    // positions.array[ix] = restX;
     positions.array[iy] = restY;
   }
 
   positions.needsUpdate = true;
   mast.geometry.computeVertexNormals();
 
-  // if(t - lastTime > 500)
+  // if(t - lastTime > 10000)
   // {
-  //   lastTime = t;
-  //   let [newX, newY] = await sim.updateAsync();
+  //   targetZ = Math.random() * 10;
+  //   targetX = Math.random() * 10;
 
-  //   mast.position.set(newY, height/2, newX);
-  //   tf.nextFrame()
+  //   lastTime = t;
   // }
 
-  // const dArr = await d.data() as Float32Array;
-  // const dx = dArr[0], dy = dArr[1];
-//   var time = t / 1000;
-//   if(time - lastUpdated > 60)
-//   {
-//     angleInDeg = fetchAngle();
-//     console.log(angleInDeg)
-//     wind.setAngle(angleInDeg);
-//     lastUpdated = time;
-//   }
+  frameCount++;
+  const now = performance.now();
 
-//   wind.flow(t);
+  if (now - lastFpsUpdate >= 1000) {
+    fps = frameCount;
+    frameCount = 0;
+    lastFpsUpdate = now;
+    fpsElem.innerText = `FPS: ${fps}`;
+  }
+
+  if(t - lastTime > 1000 && !awaitingUpdate)
+  {
+    // await sim.updateAsync();
+    await requestNextTarget();
+    // tf.nextFrame();
+    // targetZ = Math.random() * 10;
+    // targetX = Math.random() * 10;
+
+    // lastTime = t;
+  }
+
+  // const lerpFactor = 0.02;  // tune to control how fast you move to target
+  // mast.position.x += (targetX - mast.position.x) * lerpFactor;
+  // mast.position.z += (targetZ - mast.position.z) * lerpFactor;
+
+  // const dx = mast.position.x - targetX;
+  // const dz = mast.position.z - targetZ;
+  // const distSq = dx*dx + dz*dz;
+  // if (awaitingUpdate && distSq < reachThreshold*reachThreshold) {
+  //   await requestNextTarget();
+  //   awaitingUpdate = false;
+  // }
 
   controls.update();
   renderer.render( scene, camera );

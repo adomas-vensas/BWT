@@ -4,6 +4,7 @@ import * as mrt from './mrt';
 import * as ib from './ib';
 import * as dyn from './dyn';
 import * as post from './post';
+import '@tensorflow/tfjs-backend-webgpu';
 
 export default class VIVSimulation{
 
@@ -23,10 +24,10 @@ export default class VIVSimulation{
     IB_MARGIN = 2          // Margin of the IB region to the cylinder
 
     // Physical parameters
-    RE = 200               // Reynolds number
+    RE = 750.878               // Reynolds number
     UR = 5                 // Reduced velocity
     MR = 10                // Mass ratio
-    DR = 0                 // Damping ratio
+    DR = 5                 // Damping ratio
 
     // structural parameters
     FN = this.U0 / (this.UR * this.D)                                          // Natural frequency
@@ -180,7 +181,7 @@ export default class VIVSimulation{
 
         const dArr = await this.d.data() as Float32Array;
         const dx = dArr[0], dy = dArr[1];
-        console.log(dx, dy)
+        // console.log(dx, dy)
         const newX = (0 + dx) / this.D;
         const newY = (0 + dy) / this.D;
 
