@@ -41,6 +41,4 @@ export default class FPSTracker{
             this.fpsElem.innerText = `FPS: ${this.fps}`;
         }
     }
-
-
 }

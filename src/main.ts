@@ -10,7 +10,6 @@ import '@tensorflow/tfjs-backend-webgpu';
 import FPSTracker from './utilities/FPSTracker';
 
 
-// --- at top of your main file ---
 const worker = new Worker(new URL('./simulation/simWorker.ts', import.meta.url), {
   type: 'module'
 });
