@@ -101,7 +101,7 @@ function cantileverMode(s: number) {
 const lowerFrac = 0.1;               
 const y0 = -halfH + lowerFrac * height;
 
-const reachThreshold = 0.95;
+const reachThreshold = 0.99;
 let awaitingUpdate = false;
 
 const markers: THREE.Mesh[] = [];
@@ -112,16 +112,13 @@ function requestNextTarget() {
   awaitingUpdate = true;
 
   sim.updateAsync().then(([newZ, newX]) => {
-    lastPosX = targetX;
-    lastPosZ = targetZ;
-
     targetX = newX;
     targetZ = newZ;
 
     awaitingUpdate = false;
 
     const marker = new THREE.Mesh(
-      new THREE.SphereGeometry(0.15, 16, 16),
+      new THREE.SphereGeometry(0.05, 16, 16),
       new THREE.MeshBasicMaterial({ color: new THREE.Color(Math.random(), Math.random(), Math.random()) })
     );
     marker.position.set(targetX, 2.5, targetZ);
@@ -146,20 +143,11 @@ const domain = 2;
 let targetZ:number = 0, targetX:number = 0;
 let lastPosZ:number = targetZ, lastPosX:number = targetX;
 
-// targetZ = Math.random() * domain - domain/2;
-// targetX = Math.random() * domain - domain/2;
-
-// lastPosZ = targetZ;
-// lastPosX = targetX;
 await requestNextTarget();
 
 async function animate(t: number) {
-  // const bendValZ = targetZ * stepRatio;
-  // const bendValX = targetX * stepRatio;
+  const progress = Math.min(stepRatio, 1);
 
-  const progress = Math.min(stepRatio, 1); // Clamp progress to 1
-
-  // Interpolated tip position
   const deltaX = targetX - lastPosX;
   const deltaZ = targetZ - lastPosZ;
   const interpX = lastPosX + deltaX * progress;
@@ -188,7 +176,6 @@ async function animate(t: number) {
       positions.array[ix] = restX;
     }
   
-    // positions.array[ix] = restX;
     positions.array[iy] = restY;
   }
 
@@ -208,8 +195,9 @@ async function animate(t: number) {
   }
 
   if(t - lastTime > 15000 || stepRatio >= reachThreshold)
-  // if(t - lastTime > 15000 && !awaitingUpdate)
   {
+    lastPosX = targetX;
+    lastPosZ = targetZ;
     requestNextTarget();
     // lastPosZ = targetZ;
     // lastPosX = targetX;
@@ -221,29 +209,9 @@ async function animate(t: number) {
     stepRatio = 0
   }
 
-  stepRatio += 0.01
-
-  // const lerpFactor = 0.02;  // tune to control how fast you move to target
-  // mast.position.x += (targetX - mast.position.x) * lerpFactor;
-  // mast.position.z += (targetZ - mast.position.z) * lerpFactor;
-
-  // const dx = mast.position.x - targetX;
-  // const dz = mast.position.z - targetZ;
-  // const distSq = dx*dx + dz*dz;
-  // if (awaitingUpdate && distSq < reachThreshold*reachThreshold) {
-  //   await requestNextTarget();
-  //   awaitingUpdate = false;
-  // }
+  stepRatio += 0.05
 
   controls.update();
   renderer.render( scene, camera );
 }
 renderer.setAnimationLoop( animate );
-
-
-
-// function fetchAngle(): number
-// {
-//   const receivedAngleInDeg = Math.floor(Math.random() * 360);
-//   return receivedAngleInDeg;
-// }
