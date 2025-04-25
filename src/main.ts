@@ -48,7 +48,6 @@ camera.position.set(0, 30, 0);
 camera.up.set(1, 0, 0);    
 camera.lookAt(0, 0, 0);   
 
-
 let lastFpsUpdate = performance.now();
 let frameCount = 0;
 let fps = 0;
@@ -107,28 +106,9 @@ controls.enableDamping = true;
 
 const sim = new VIVSimulation();
 const height = 3;
-const mast = new Mast({ x: 0, z: 0, y: height / 2, radius: sim.D / 2, height: height });
+const mast = new Mast({ x: 0, z: 0, y: height / 2, radius: sim.D / 2, height: height, lowerFrac: 0.1 });
 scene.add(mast);
 
-const positions = mast.geometry.attributes.position;
-const restPositions  = positions.array.slice();
-
-const halfH          = height / 2;
-
-const β = 1.875104071;  
-const A = (Math.cosh(β) + Math.cos(β)) / (Math.sinh(β) + Math.sin(β));
-const denom = Math.cosh(β) - Math.cos(β) - A * (Math.sinh(β) - Math.sin(β));
-
-function cantileverMode(s: number) {
-  const num = Math.cosh(β * s) - Math.cos(β * s)
-            - A * (Math.sinh(β * s) - Math.sin(β * s));
-  return num / denom;
-}
-
-const lowerFrac = 0.1;               
-const y0 = -halfH + lowerFrac * height;
-
-let lastTime = 0;
 
 let lastPos = { x: 0, z: 0 };
 let nextPos = shiftCoord() || { x: 0, z: 0 };
@@ -145,37 +125,7 @@ async function animate(t: number) {
     interpT = 0;
   }
 
-  const interpX = THREE.MathUtils.lerp(lastPos.x, nextPos.x, interpT);
-  const interpZ = THREE.MathUtils.lerp(lastPos.z, nextPos.z, interpT);
-
-  for (let i = 0; i < positions.count; i++) {
-    const ix    = 3*i + 0;
-    const iy    = 3*i + 1;
-    const iz    = 3*i + 2;
-
-    const restX = restPositions[ix];
-    const restY = restPositions[iy];
-    const restZ = restPositions[iz];
-
-    if (restY > y0) {
-      const s = (restY - y0) / (halfH - y0);
-      const w = cantileverMode(s);
-
-      const newZ = interpZ * w;
-      const newX = interpX * w;
-
-      positions.array[iz] = restZ + newZ;
-      positions.array[ix] = restX + newX;
-    } else {
-      positions.array[iz] = restZ;
-      positions.array[ix] = restX;
-    }
-  
-    positions.array[iy] = restY;
-  }
-
-  positions.needsUpdate = true;
-  mast.geometry.computeVertexNormals();
+  mast.sway(lastPos, nextPos, interpT);
 
   frameCount++;
   const now = performance.now();
