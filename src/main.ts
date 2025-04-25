@@ -73,12 +73,12 @@ const sideSize : number = 20;
 const ground = new Ground({ sideSize: sideSize, resolution: 64 });
 scene.add(ground);
 
-const wind = new Wind({
-  planeWidth: sideSize,
-  lineAmount: 1,
-  lineResolution: 10
-});
-scene.add(...wind.getWindLines());
+// const wind = new Wind({
+//   planeWidth: sideSize,
+//   lineAmount: 1,
+//   lineResolution: 10
+// });
+// scene.add(...wind.getWindLines());
 
 
 scene.background = new THREE.Color( 'deepskyblue' );

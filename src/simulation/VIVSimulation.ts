@@ -181,7 +181,6 @@ export default class VIVSimulation{
 
         const dArr = await this.d.data() as Float32Array;
         const dx = dArr[0], dy = dArr[1];
-        // console.log(dx, dy)
         const newX = (0 + dx) / this.D;
         const newY = (0 + dy) / this.D;
 
