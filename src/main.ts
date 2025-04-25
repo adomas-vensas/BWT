@@ -5,9 +5,9 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import Ground from './turbine_elements/Ground';
 import Mast from './objects/Mast';
 import Wind from './objects/Wind';
-import * as tf from '@tensorflow/tfjs'
 import VIVSimulation from './simulation/VIVSimulation';
 import '@tensorflow/tfjs-backend-webgpu';
+import FPSTracker from './utilities/FPSTracker';
 
 
 // --- at top of your main file ---
@@ -41,30 +41,13 @@ function shiftCoord() {
   return coord;
 }
 
+const fpsTracker = new FPSTracker();
 const scene = new THREE.Scene();
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.set(0, 30, 0); 
 camera.up.set(1, 0, 0);    
-camera.lookAt(0, 0, 0);   
-
-let lastFpsUpdate = performance.now();
-let frameCount = 0;
-let fps = 0;
-
-const fpsElem = document.createElement('div');
-fpsElem.style.position = 'absolute';
-fpsElem.style.top = '10px';
-fpsElem.style.left = '10px';
-fpsElem.style.color = 'white';
-fpsElem.style.fontFamily = 'monospace';
-fpsElem.style.fontSize = '16px';
-fpsElem.style.backgroundColor = 'rgba(0,0,0,0.5)';
-fpsElem.style.padding = '4px 8px';
-fpsElem.style.borderRadius = '4px';
-fpsElem.style.zIndex = '999';
-fpsElem.innerText = 'FPS: ...';
-document.body.appendChild(fpsElem);
+camera.lookAt(0, 0, 0);
 
 camera.rotateY(-Math.PI/2);
 const renderer = new THREE.WebGLRenderer({
@@ -115,6 +98,8 @@ let nextPos = shiftCoord() || { x: 0, z: 0 };
 let interpT  = 0;
 const interpSpeed = 0.05;
 
+fpsTracker.start();
+
 async function animate(t: number) {
   interpT += interpSpeed;
 
@@ -127,15 +112,7 @@ async function animate(t: number) {
 
   mast.sway(lastPos, nextPos, interpT);
 
-  frameCount++;
-  const now = performance.now();
-
-  if (now - lastFpsUpdate >= 1000) {
-    fps = frameCount;
-    frameCount = 0;
-    lastFpsUpdate = now;
-    fpsElem.innerText = `FPS: ${fps}`;
-  }
+  fpsTracker.track();
 
   controls.update();
   renderer.render( scene, camera );
