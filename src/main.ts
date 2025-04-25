@@ -16,8 +16,29 @@ camera.position.set(0, 30, 0);
 camera.up.set(1, 0, 0);    
 camera.lookAt(0, 0, 0);   
 
+
+let lastFpsUpdate = performance.now();
+let frameCount = 0;
+let fps = 0;
+
+const fpsElem = document.createElement('div');
+fpsElem.style.position = 'absolute';
+fpsElem.style.top = '10px';
+fpsElem.style.left = '10px';
+fpsElem.style.color = 'white';
+fpsElem.style.fontFamily = 'monospace';
+fpsElem.style.fontSize = '16px';
+fpsElem.style.backgroundColor = 'rgba(0,0,0,0.5)';
+fpsElem.style.padding = '4px 8px';
+fpsElem.style.borderRadius = '4px';
+fpsElem.style.zIndex = '999';
+fpsElem.innerText = 'FPS: ...';
+document.body.appendChild(fpsElem);
+
+
 await tf.setBackend('webgl');
 await tf.ready();
+console.log(tf.getBackend())
 
 camera.rotateY(-Math.PI/2);
 const renderer = new THREE.WebGLRenderer({
@@ -57,47 +78,140 @@ scene.background = new THREE.Color( 'deepskyblue' );
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
-let lastUpdated = 0;
-let angleInDeg = 45;
-
-
 const sim = new VIVSimulation();
 const height = 3;
 const mast = new Mast({ x: 0, z: 0, y: height / 2, radius: sim.D / 2, height: height });
 scene.add(mast);
 
-let lastTime = 0
+const positions = mast.geometry.attributes.position;
+const restPositions  = positions.array.slice(); // Float32Array copy
+
+const halfH          = height / 2;
+
+const β = 1.875104071;  
+const A = (Math.cosh(β) + Math.cos(β)) / (Math.sinh(β) + Math.sin(β));
+const denom = Math.cosh(β) - Math.cos(β) - A * (Math.sinh(β) - Math.sin(β));
+
+function cantileverMode(s: number) {
+  const num = Math.cosh(β * s) - Math.cos(β * s)
+            - A * (Math.sinh(β * s) - Math.sin(β * s));
+  return num / denom;
+}
+
+const lowerFrac = 0.1;               
+const y0 = -halfH + lowerFrac * height;
+
+const reachThreshold = 0.99;
+let awaitingUpdate = false;
+
+const markers: THREE.Mesh[] = [];
+const maxMarkers = 10;
+
+
+function requestNextTarget() {
+  awaitingUpdate = true;
+
+  sim.updateAsync().then(([newZ, newX]) => {
+    targetX = newX;
+    targetZ = newZ;
+
+    awaitingUpdate = false;
+
+    const marker = new THREE.Mesh(
+      new THREE.SphereGeometry(0.05, 16, 16),
+      new THREE.MeshBasicMaterial({ color: new THREE.Color(Math.random(), Math.random(), Math.random()) })
+    );
+    marker.position.set(targetX, 2.5, targetZ);
+    scene.add(marker);
+    markers.push(marker);
+
+    if (markers.length > maxMarkers) {
+      const old = markers.shift();
+      scene.remove(old!);
+    }
+  });
+}
+
+
+let lastTime = 0;
+let stepRatio = 0.001
+let k = 1;
+
+const domain = 2;
+
+
+let targetZ:number = 0, targetX:number = 0;
+let lastPosZ:number = targetZ, lastPosX:number = targetX;
+
+await requestNextTarget();
+
 async function animate(t: number) {
+  const progress = Math.min(stepRatio, 1);
 
-  if(t - lastTime > 500)
-  {
-    lastTime = t;
-    let [newX, newY] = await sim.updateAsync();
+  const deltaX = targetX - lastPosX;
+  const deltaZ = targetZ - lastPosZ;
+  const interpX = lastPosX + deltaX * progress;
+  const interpZ = lastPosZ + deltaZ * progress;
 
-    mast.position.set(newY, height/2, newX);
-    tf.nextFrame()
+  for (let i = 0; i < positions.count; i++) {
+    const ix    = 3*i + 0;
+    const iy    = 3*i + 1;
+    const iz    = 3*i + 2;
+
+    const restX = restPositions[ix];
+    const restY = restPositions[iy];
+    const restZ = restPositions[iz];
+
+    if (restY > y0) {
+      const s = (restY - y0) / (halfH - y0);
+      const w = cantileverMode(s);
+
+      const newZ = interpZ * w;
+      const newX = interpX * w;
+
+      positions.array[iz] = restZ + newZ;
+      positions.array[ix] = restX + newX;
+    } else {
+      positions.array[iz] = restZ;
+      positions.array[ix] = restX;
+    }
+  
+    positions.array[iy] = restY;
   }
 
-  // const dArr = await d.data() as Float32Array;
-  // const dx = dArr[0], dy = dArr[1];
-//   var time = t / 1000;
-//   if(time - lastUpdated > 60)
-//   {
-//     angleInDeg = fetchAngle();
-//     console.log(angleInDeg)
-//     wind.setAngle(angleInDeg);
-//     lastUpdated = time;
-//   }
+  positions.needsUpdate = true;
+  mast.geometry.computeVertexNormals();
 
-//   wind.flow(t);
+
+
+  frameCount++;
+  const now = performance.now();
+
+  if (now - lastFpsUpdate >= 1000) {
+    fps = frameCount;
+    frameCount = 0;
+    lastFpsUpdate = now;
+    fpsElem.innerText = `FPS: ${fps}`;
+  }
+
+  if(t - lastTime > 15000 || stepRatio >= reachThreshold)
+  {
+    lastPosX = targetX;
+    lastPosZ = targetZ;
+    requestNextTarget();
+    // lastPosZ = targetZ;
+    // lastPosX = targetX;
+    // targetZ = Math.random() * domain - domain/2;
+    // targetX = Math.random() * domain - domain/2;
+    // console.log(targetZ, targetX)
+
+    lastTime = t;
+    stepRatio = 0
+  }
+
+  stepRatio += 0.05
 
   controls.update();
   renderer.render( scene, camera );
 }
 renderer.setAnimationLoop( animate );
-
-// function fetchAngle(): number
-// {
-//   const receivedAngleInDeg = Math.floor(Math.random() * 360);
-//   return receivedAngleInDeg;
-// }

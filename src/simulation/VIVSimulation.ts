@@ -4,6 +4,7 @@ import * as mrt from './mrt';
 import * as ib from './ib';
 import * as dyn from './dyn';
 import * as post from './post';
+import '@tensorflow/tfjs-backend-webgpu';
 
 export default class VIVSimulation{
 
@@ -23,7 +24,7 @@ export default class VIVSimulation{
     IB_MARGIN = 2          // Margin of the IB region to the cylinder
 
     // Physical parameters
-    RE = 200               // Reynolds number
+    RE = 1_400_000               // Reynolds number
     UR = 5                 // Reduced velocity
     MR = 10                // Mass ratio
     DR = 0                 // Damping ratio
@@ -79,10 +80,8 @@ export default class VIVSimulation{
         
         this.X = xr.reshape([this.NX, 1]).tile([1, this.NY]);  // Tensor2D<[NX,NY]>
         this.Y = yr.reshape([1, this.NY]).tile([this.NX, 1]);
-        
-        const THETA_MARKERS = tf.range(0, this.N_MARKER, 1, 'float32')
-        this.X_MARKERS = THETA_MARKERS.cos().mul(0.5 * this.D).add(this.X_OBJ) as tf.Tensor1D;
-        this.Y_MARKERS = THETA_MARKERS.sin().mul(0.5 * this.D).add(this.Y_OBJ) as tf.Tensor1D;
+
+        [this.X_MARKERS, this.Y_MARKERS] = this.makeCircleMarkers(this.N_MARKER, this.D, this.X_OBJ, this.Y_OBJ);
         this.L_ARC = this.D * Math.PI / this.N_MARKER
         
         this.IB_START_X = Math.floor(this.X_OBJ - 0.5 * this.D - this.IB_MARGIN)
@@ -90,9 +89,9 @@ export default class VIVSimulation{
         this.IB_SIZE = this.D + this.IB_MARGIN * 2
         
         this.f = lbm.getEquilibrium(this.rho, this.u)
+
         this.v = tf.tensor1d([this.d.arraySync()[0], 1e-2], 'float32');
 
-        const vMarkers = this.v.reshape([1, 2]).tile([this.N_MARKER, 1]);
         this.feq_init = this.f.slice([0, 0, 0], [9, 1, 1]).reshape([9]);
     }
 
@@ -106,24 +105,24 @@ export default class VIVSimulation{
       tf.Tensor1D     // h
     ]>
     {
-      const macro = lbm.getMacroscopic(this.f);
-      this.rho = macro.rho;
-      this.rho = macro.rho;
-      this.u = macro.u;
-    
+      const [rho, u] = lbm.getMacroscopic(this.f);
+      this.rho = rho;
+      this.u = u;
+
       this.feq = lbm.getEquilibrium(this.rho, this.u);
+      
       this.f = mrt.collision(this.f, this.feq, this.MRT_COL_LEFT)
-    
+      
       let [x_markers, y_markers] = ib.getMarkersCoords2dof(this.X_MARKERS, this.Y_MARKERS, this.d)
-    
+      
       const ibStartX = this.d.gather(0).add(this.IB_START_X).floor().toInt();
       const ibStartY = this.d.gather(1).add(this.IB_START_Y).floor().toInt();
-    
+      
       const ibxArr = await ibStartX.data() as Int32Array;
       const ibyArr = await ibStartY.data() as Int32Array;
       const ibx    = ibxArr[0];
       const iby    = ibyArr[0];
-    
+      
       const uSlice = this.u.slice(
         [0,   ibx,   iby],    // begin at (0, ibx, iby)
         [2,   this.IB_SIZE, this.IB_SIZE] // size (2, IB_SIZE, IB_SIZE)
@@ -143,55 +142,106 @@ export default class VIVSimulation{
         [0,   ibx,   iby], 
         [9,   this.IB_SIZE, this.IB_SIZE]
       );
-    
+      
       const vMarkers = this.v.reshape([1,2]).tile([this.N_MARKER,1]) as tf.Tensor2D;
       let [g_slice, h_markers] = ib.multiDirectForcing(uSlice, XSlice, YSlice,
         vMarkers, x_markers, y_markers, this.N_MARKER, this.L_ARC, this.N_ITER_MDF, ib.kernelRange4);
         
       const g_lattice = lbm.getDiscretizedForce(g_slice, uSlice)
       const s_slice = mrt.getSource(g_lattice, this.MRT_SRC_LEFT)
-    
-      const patch = fSlice.add(s_slice);
-      const pads: Array<[number, number]> = [
-        [0, 0],                        // no padding on the “direction” axis
-        [ibx,  this.f.shape[1] - this.IB_SIZE - ibx],  // pad before and after in X
-        [iby,  this.f.shape[2] - this.IB_SIZE - iby]   // pad before and after in Y
-      ];
-      const paddedPatch = patch.pad(pads);  // now shape [9,NX,NY]
-      const regionMask = tf
-        .ones([9, this.IB_SIZE, this.IB_SIZE], 'bool')
-        .pad(pads);   // true inside the IB box, false elsewhere
-      this.f = tf.where(regionMask, paddedPatch, this.f) as tf.Tensor3D;
-    
+        
+      const patch = fSlice.add(s_slice) as tf.Tensor3D;
+      this.f = this.dynamicUpdateSlice(this.f, patch, [0, ibx, iby])
+      
       this.h = ib.getForceToObj(h_markers)
       const scale = (Math.PI * this.D * this.D) / 4;
       this.h = this.h.add(this.a.mul(scale)) as tf.Tensor1D;
-    
+      
       [this.a, this.v, this.d] = dyn.newmark2dof(this.a, this.v, this.d, this.h, this.MASS, this.STIFFNESS, this.DAMPING)
-    
+      
       this.f = lbm.streaming(this.f)
+      
+
+      const feqInitFull = this.feq_init
+      .reshape([9, 1, 1])         // [9,1,1]this.
+      .tile([1, this.NX, this.NY]) as tf.Tensor3D;  // [9,NX,NY]
     
-      // const feqInitFull = this.feq_init
-      // .reshape([9, 1, 1])         // [9,1,1]this.
-      // .tile([1, this.NX, this.NY]) as tf.Tensor3D;  // [9,NX,NY]
-    
-      // this.f = lbm.boundaryEquilibrium(this.f, feqInitFull, 'right');
-      // this.f = lbm.velocityBoundary(this.f, this.U0, 0, "left")
-    
+      this.f = lbm.boundaryEquilibrium(this.f, feqInitFull, 'right');
+      this.f = lbm.velocityBoundary(this.f, this.U0, 0, "left")
+      
       return [this.f, this.rho, this.u, this.d, this.v, this.a, this.h]
     }
 
-
+    
     public async updateAsync() : Promise<[number, number]>
     {
         [this.f, this.rho, this.u, this.d, this.v, this.a, this.h] = await this.update();
         
+        const curlT = post.calculateCurl(this.u).transpose() as tf.Tensor2D;
+
         const dArr = await this.d.data() as Float32Array;
         const dx = dArr[0], dy = dArr[1];
-        console.log(dx, dy)
+        // console.log(dx, dy)
         const newX = (0 + dx) / this.D;
         const newY = (0 + dy) / this.D;
 
         return [newX, newY]
     }
+
+
+    private makeCircleMarkers(
+      N_MARKER: number,
+      D:       number,
+      X_OBJ:   number,
+      Y_OBJ:   number
+    ): [tf.Tensor1D, tf.Tensor1D] {
+      return tf.tidy(() => {
+        // angles 0 … 2π, exclusive of endpoint
+        const theta = tf.range(0, N_MARKER, 1, 'float32')
+                .mul(2 * Math.PI / N_MARKER) as tf.Tensor1D;
+    
+        // compute offsets
+        const radius = 0.5 * D;
+        const cosT   = theta.cos();
+        const sinT   = theta.sin();
+
+    
+        // shift by center
+        const xMarkers = cosT.mul(radius).add(X_OBJ) as tf.Tensor1D;
+        const yMarkers = sinT.mul(radius).add(Y_OBJ) as tf.Tensor1D;
+    
+        return [xMarkers, yMarkers];
+      });
+    }
+
+    /**
+   * Replace a sub-tensor inside a bigger tensor, analogous to JAX's dynamic_update_slice.
+   *
+   * @param base    the original Tensor of shape [D0, D1, D2…]
+   * @param patch   a smaller Tensor whose shape must match `size`
+   * @param begin   a number[] giving the start indices in each dimension
+   * @returns       a new Tensor with `patch` copied into `base` at `begin`
+   */
+  private dynamicUpdateSlice(
+    base: tf.Tensor3D,
+    patch: tf.Tensor3D,
+    begin: [number, number, number]    // exactly 3 dims here
+  ): tf.Tensor3D {
+    return tf.tidy(() => {
+      const [D0, D1, D2] = base.shape;
+      const [P0, P1, P2] = patch.shape;
+
+      // explicitly type as array of three [before, after] tuples
+      const paddings: [ [number,number], [number,number], [number,number] ] = [
+        [ begin[0], D0 - P0 - begin[0] ],
+        [ begin[1], D1 - P1 - begin[1] ],
+        [ begin[2], D2 - P2 - begin[2] ],
+      ];
+
+      const paddedPatch = patch.pad(paddings);
+      const mask = tf.ones(patch.shape, 'bool').pad(paddings);
+
+      return tf.where(mask, paddedPatch, base) as tf.Tensor3D;
+    });
+  }
 }

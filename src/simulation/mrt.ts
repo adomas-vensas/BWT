@@ -14,21 +14,21 @@ export function collision(
   leftMatrix: tf.Tensor2D
 ): tf.Tensor3D {
   return tf.tidy(() => {
-    const delta = tf.sub(feq, f); // [9, NX, NY]
+    // delta = feq - f, shape [9, NX, NY]
+    const delta = feq.sub(f);
 
-    const [_, NX, NY] = delta.shape;
+    // reshape [9, NX*NY] so we can matMul
+    const [d0, d1, d2] = delta.shape;
+    const flatDelta = delta.reshape([d0, d1 * d2]); // [9, NX*NY]
 
-    // delta: [9, NX, NY] → [9, NX * NY]
-    const deltaFlat = delta.reshape([9, NX * NY]); // shape [9, NX*NY]
+    // apply leftMatrix · delta, yields [9, NX*NY]
+    const collidedFlat = leftMatrix.matMul(flatDelta);
 
-    // leftMatrix: [9, 9]
-    const resultFlat = tf.matMul(leftMatrix, deltaFlat); // shape [9, NX*NY]
+    // reshape back to [9, NX, NY]
+    const collided = collidedFlat.reshape([d0, d1, d2]);
 
-    // reshape result back to [9, NX, NY]
-    const collisionTerm = resultFlat.reshape([9, NX, NY]);
-    
-    const fNew = tf.add(collisionTerm, f); // [9, NX, NY]
-    return fNew as tf.Tensor3D;
+    // f_post = f + collided
+    return f.add(collided) as tf.Tensor3D;
   });
 }
 
@@ -127,9 +127,15 @@ export function getSource(
   forcing: tf.Tensor3D,
   leftMatrix: tf.Tensor2D
 ): tf.Tensor3D {
-  // flatten the spatial dims so we can do a matMul
-  const [ , nx, ny] = forcing.shape;
-  const flatForcing = forcing.reshape([9, nx * ny]);       // [9, NX*NY]
-  const flatSource  = leftMatrix.matMul(flatForcing);      // [9, NX*NY]
-  return flatSource.reshape([9, nx, ny]) as tf.Tensor3D;   // [9, NX, NY]
+  return tf.tidy(() => {
+    // flatten spatial dims: [9, NX*NY]
+    const [d0, d1, d2] = forcing.shape;
+    const flatF = forcing.reshape([d0, d1 * d2]); // [9, NX*NY]
+
+    // matMul: leftMatrix [9×9] × flatF [9×(NX*NY)] → [9×(NX*NY)]
+    const flatSrc = leftMatrix.matMul(flatF);
+
+    // restore shape [9, NX, NY]
+    return flatSrc.reshape([d0, d1, d2]) as tf.Tensor3D;
+  });
 }

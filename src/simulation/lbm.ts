@@ -30,39 +30,39 @@ const OPP_DIRS   = [0, 3, 4, 1, 2, 7, 8, 5, 6];
  * @param u tf.Tensor3D of shape [2, NX, NY]
  * @returns feq tf.Tensor3D of shape [9, NX, NY]
  */
-export function getEquilibrium(rho: tf.Tensor2D, u: tf.Tensor3D): tf.Tensor3D {
+export function getEquilibrium(
+  rho: tf.Tensor2D,
+  u:   tf.Tensor3D
+): tf.Tensor3D {
   return tf.tidy(() => {
-    // u[0], u[1]: shape [NX, NY]
-    const u0 = u.slice([0, 0, 0], [1, -1, -1]).squeeze(); // u[0, :, :]
-    const u1 = u.slice([1, 0, 0], [1, -1, -1]).squeeze(); // u[1, :, :]
+    // Gather velocity components e·u for each direction
+    // VELOCITIES[:,0] is shape [9], reshape to [9,1,1]
+    const ex = VELOCITIES.slice([0, 0], [9, 1]).reshape([9, 1, 1]);
+    const ey = VELOCITIES.slice([0, 1], [9, 1]).reshape([9, 1, 1]);
 
-    // VELOCITIES: [9, 2]
-    const ex = VELOCITIES.slice([0, 0], [-1, 1]).reshape([9, 1, 1]); // [9, 1, 1]
-    const ey = VELOCITIES.slice([0, 1], [-1, 1]).reshape([9, 1, 1]); // [9, 1, 1]
+    // u0, u1 are [NX,NY]; lift them to [1,NX,NY]
+    const u0e = u.slice([0, 0, 0], [1, -1, -1]);
+    const u1e = u.slice([1, 0, 0], [1, -1, -1]);
 
-    // Compute dot product u · e: uc = u_x * e_x + u_y * e_y
-    const uc = tf.add(tf.mul(u0, ex), tf.mul(u1, ey)); // [9, NX, NY]
+    // uc = e_x * u_x + e_y * u_y → shape [9,NX,NY]
+    const uc = ex.mul(u0e).add(ey.mul(u1e));
 
-    // u^2 = u0^2 + u1^2
-    const uSqr = tf.add(tf.square(u0), tf.square(u1)); // [NX, NY]
-    const uSqrExpanded = uSqr.expandDims(0); // [1, NX, NY]
+    // u² = u_x² + u_y², shape [1,NX,NY]
+    const u2 = u0e.square().add(u1e.square());
 
-    const rhoExpanded = rho.expandDims(0); // [1, NX, NY]
-    const weightsExpanded = WEIGHTS.reshape([9, 1, 1]); // [9, 1, 1]
+    // rho expanded to [9,NX,NY]
+    const rhoE = rho.expandDims(0).tile([9, 1, 1]);
 
-    // Compute feq
-    const feq = tf.mul(
-      tf.mul(rhoExpanded, weightsExpanded), // [9, NX, NY]
-      tf.add(
-        tf.add(
-          tf.add(tf.scalar(1), tf.mul(tf.scalar(3), uc)),
-          tf.mul(tf.scalar(4.5), tf.square(uc))
-        ),
-        tf.mul(tf.scalar(-1.5), uSqrExpanded)
-      )
-    );
+    // weight reshape [9,1,1]
+    const w9 = WEIGHTS.reshape([9, 1, 1]);
 
-    return feq as tf.Tensor3D;
+    // feq = rho * w * [1 + 3 uc + 4.5 uc^2 – 1.5 u²]
+    const term = tf.scalar(1)
+      .add(uc.mul(3))
+      .add(uc.square().mul(4.5))
+      .sub(u2.mul(1.5));
+
+    return rhoE.mul(w9).mul(term) as tf.Tensor3D;
   });
 }
 
@@ -72,29 +72,29 @@ export function getEquilibrium(rho: tf.Tensor2D, u: tf.Tensor3D): tf.Tensor3D {
  * @returns { rho: tf.Tensor2D, u: tf.Tensor3D [2, NX, NY] } - macroscopic properties
  */
 export function getMacroscopic(
-    f: tf.Tensor3D
-  ): { rho: tf.Tensor2D, u: tf.Tensor3D } {
-    return tf.tidy(() => {
-      // Density: sum over all directions (axis 0)
-      const rho = tf.sum(f, 0) as tf.Tensor2D; // shape [NX, NY]
-  
-      // Velocity components
-      const u_x = tf.divNoNan(
-        tf.sub(tf.sum(tf.gather(f, RIGHT_DIRS), 0), tf.sum(tf.gather(f, LEFT_DIRS), 0)),
-        rho
-      ); // [NX, NY]
-  
-      const u_y = tf.divNoNan(
-        tf.sub(tf.sum(tf.gather(f, UP_DIRS), 0), tf.sum(tf.gather(f, DOWN_DIRS), 0)),
-        rho
-      ); // [NX, NY]
-  
-      // Stack into velocity tensor [2, NX, NY]
-      const u = tf.stack([u_x, u_y], 0); // shape [2, NX, NY]
-  
-      return { rho, u: u as tf.Tensor3D };
-    });
+  f: tf.Tensor3D
+): [tf.Tensor2D, tf.Tensor3D] {
+  return tf.tidy(() => {
+    // rho = sum over directions axis=0
+    const rho = tf.sum(f, 0) as tf.Tensor2D;
+
+    // sum of f over direction subsets, result shape [NX,NY]
+    const sumR = f.gather(RIGHT_DIRS, 0).sum(0);
+    const sumL = f.gather(LEFT_DIRS,  0).sum(0);
+    const sumU = f.gather(UP_DIRS,    0).sum(0);
+    const sumD = f.gather(DOWN_DIRS,  0).sum(0);
+
+    // u_x = (sumR - sumL) / rho
+    const ux = sumR.sub(sumL).div(rho);
+    // u_y = (sumU - sumD) / rho
+    const uy = sumU.sub(sumD).div(rho);
+
+    // stack into shape [2, NX, NY]
+    const u = tf.stack([ux, uy], 0) as tf.Tensor3D;
+    return [rho, u];
+  });
 }
+
 
 /**
  * Discretize external force density into lattice forcing term via Guo’s scheme.
@@ -108,31 +108,27 @@ export function getDiscretizedForce(
   u: tf.Tensor3D
 ): tf.Tensor3D {
   return tf.tidy(() => {
-    // unpack velocity and force components: each is Tensor2D<[NX,NY]>
-    const [u0, u1] = tf.unstack(u, 0) as [tf.Tensor2D, tf.Tensor2D];
-    const [g0, g1] = tf.unstack(g, 0) as [tf.Tensor2D, tf.Tensor2D];
+    // extract ux, uy: each [NX,NY] lifted to [1,NX,NY]
+    const ux = u.slice([0, 0, 0], [1, -1, -1]);
+    const uy = u.slice([1, 0, 0], [1, -1, -1]);
 
-    // pull out direction vectors & weights, reshape to [9,1,1]
-    const vx = VELOCITIES.slice([0, 0], [9, 1]).reshape([9, 1, 1]);
-    const vy = VELOCITIES.slice([0, 1], [9, 1]).reshape([9, 1, 1]);
+    // direction vectors [9,1,1]
+    const ex = VELOCITIES.slice([0, 0], [9, 1]).reshape([9, 1, 1]);
+    const ey = VELOCITIES.slice([0, 1], [9, 1]).reshape([9, 1, 1]);
+
+    // project u onto each direction: uc[d,x,y] = ux[x,y]*ex[d] + uy[x,y]*ey[d]
+    const uc = ex.mul(ux).add(ey.mul(uy)); // [9,NX,NY]
+
+    // lift g0, g1 to [1,NX,NY]
+    const g0 = g.slice([0, 0, 0], [1, -1, -1]);
+    const g1 = g.slice([1, 0, 0], [1, -1, -1]);
+
+    // build bracketed terms A and B: each [9,NX,NY]
+    const A = ex.sub(ux).mul(3).add(uc.mul(ex).mul(9)).mul(g0);
+    const B = ey.sub(uy).mul(3).add(uc.mul(ey).mul(9)).mul(g1);
+
+    // weight and combine: WEIGHTS [9] → [9,1,1]
     const w9 = WEIGHTS.reshape([9, 1, 1]);
-
-    // lift u0,u1,g0,g1 to 3D: [1,NX,NY] → broadcastable against [9,NX,NY]
-    const u0e = u0.expandDims(0);
-    const u1e = u1.expandDims(0);
-    const g0e = g0.expandDims(0);
-    const g1e = g1.expandDims(0);
-
-    // projection u·e for each direction: uc[d,x,y] = u0[x,y]*vx[d] + u1[x,y]*vy[d]
-    const uc = u0e.mul(vx).add(u1e.mul(vy));
-
-    // build the two bracketed terms:
-    //   A = 3*(e_x − u) + 9*(uc * e_x)    modulated by g0
-    //   B = 3*(e_y − u) + 9*(uc * e_y)    modulated by g1
-    const A = vx.sub(u0e).mul(3).add(uc.mul(vx).mul(9)).mul(g0e);
-    const B = vy.sub(u1e).mul(3).add(uc.mul(vy).mul(9)).mul(g1e);
-
-    // combine and weight
     return w9.mul(A.add(B)) as tf.Tensor3D;
   });
 }
