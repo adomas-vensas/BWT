@@ -4,17 +4,15 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import Ground from './turbine_elements/Ground';
 import Mast from './objects/Mast';
-import Wind from './objects/Wind';
-import VIVSimulation from './simulation/VIVSimulation';
-import '@tensorflow/tfjs-backend-webgpu';
 import FPSTracker from './utilities/FPSTracker';
+import VortexShedding from './objects/VortexShedding';
 
 
 const worker = new Worker(new URL('./simulation/simWorker.ts', import.meta.url), {
   type: 'module'
 });
 
-const coordQueue: { x: number; z: number }[] = [];
+const coordQueue: { x: number; z: number; curl: Float32Array }[] = [];
 const maxBuffer = 20;
 
 // whenever worker has new data, enqueue it
@@ -27,17 +25,16 @@ worker.onmessage = (ev) => {
 };
 
 // whenever we consume one, tell the worker it can resume (if paused)
-function shiftCoord() {
-  if (coordQueue.length === 0) {
-    return null;
-  }
-  const coord = coordQueue.shift()!;
-  // inform worker we freed one slot
+function shiftCoord(): [{x: number; z: number}, Float32Array] | null {
+  if (coordQueue.length === 0) return null;
+
+  const data = coordQueue.shift()!;
+  // tell the worker it can push more
   worker.postMessage('dequeue');
   if (coordQueue.length < maxBuffer / 2) {
     worker.postMessage('resume');
   }
-  return coord;
+  return [{ x: data.x, z: data.z }, data.curl];
 }
 
 const fpsTracker = new FPSTracker();
@@ -62,6 +59,9 @@ window.addEventListener('resize', function () {
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
 const axesHelper = new THREE.AxesHelper( 25 );
 scene.add(axesHelper);
 
@@ -69,31 +69,32 @@ const ambientLight = new THREE.AmbientLight(0xFFFFFF);
 scene.add(ambientLight);
 
 const sideSize : number = 20;
+const resolution: number = 64;
 
-const ground = new Ground({ sideSize: sideSize, resolution: 64 });
-scene.add(ground);
-
-// const wind = new Wind({
-//   planeWidth: sideSize,
-//   lineAmount: 1,
-//   lineResolution: 10
-// });
-// scene.add(...wind.getWindLines());
-
+// const ground = new Ground({ sideSize: sideSize, resolution: resolution });
+// scene.add(ground);
 
 scene.background = new THREE.Color( 'deepskyblue' );
 
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
+let vortexShedding = new VortexShedding(20, 10, 2048);
+scene.add(vortexShedding);
 
-const sim = new VIVSimulation();
+
+const diameter = 1;
 const height = 3;
-const mast = new Mast({ x: 0, z: 0, y: height / 2, radius: sim.D / 2, height: height, lowerFrac: 0.1 });
+const mast = new Mast({ x: 0, z: 0, y: height / 2, radius: diameter / 2, height: height, lowerFrac: 0.1 });
+vortexShedding.rotateX(-Math.PI/2)
+vortexShedding.rotateZ(-Math.PI/2)
 scene.add(mast);
 
 
-let lastPos = { x: 0, z: 0 };
-let nextPos = shiftCoord() || { x: 0, z: 0 };
+let lastPos  = { x: 0, z: 0 };
+let nextPos  = { x: 0, z: 0 };
+let nextCurl = new Float32Array(resolution*resolution)
+const primed = shiftCoord();
+if (primed) {
+  [nextPos, nextCurl] = primed;
+}
 let interpT  = 0;
 const interpSpeed = 0.05;
 
@@ -104,12 +105,15 @@ async function animate(t: number) {
 
   if (interpT >= 1) {
     lastPos = nextPos;
-    const newCoord = shiftCoord();
-    nextPos = newCoord || lastPos;
+    const fresh = shiftCoord();
+    if (fresh) {
+      [nextPos, nextCurl] = fresh;
+    }
     interpT = 0;
   }
 
   mast.sway(lastPos, nextPos, interpT);
+  vortexShedding.update(nextCurl, new THREE.Vector3(nextPos.x, 0, nextPos.z))
 
   fpsTracker.track();
 

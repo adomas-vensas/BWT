@@ -1,10 +1,8 @@
-// simWorker.js
 import * as tf from '@tensorflow/tfjs';
 import VIVSimulation from './VIVSimulation';
 
 let sim: VIVSimulation;
 let paused = false;
-const maxBuffer = 30;            // upper‐limit on how many coords to hold
 let queueLength = 0;
 
 // Initialize TF backend & sim
@@ -22,8 +20,8 @@ async function computeLoop() {
     return setTimeout(computeLoop, 100);
   }
   // run one step
-  const [z, x] = await sim.updateAsync();
-  postMessage({ x, z });
+  const [z, x, curl] = await sim.updateAsync();
+  postMessage({ x, z, curl });
   queueLength++;
   // immediately schedule next
   computeLoop();

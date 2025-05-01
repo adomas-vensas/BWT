@@ -8,35 +8,35 @@ import '@tensorflow/tfjs-backend-webgpu';
 
 export default class VIVSimulation{
 
-    D = 1
-    U0 = 0.1
+    public static D = 1
+    public static U0 = 0.1
 
-    NX = 20 * this.D
-    NY = 10 * this.D
+    NX = 20 * VIVSimulation.D            // Grid points in x direction
+    NY = 10 * VIVSimulation.D            // Grid points in y direction
 
     // Cylinder position
-    X_OBJ = 8 * this.D          // Cylinder x position
-    Y_OBJ = 5 * this.D          // Cylinder y position
+    X_OBJ = 8 * VIVSimulation.D          // Cylinder x position
+    Y_OBJ = 5 * VIVSimulation.D          // Cylinder y position
 
     // IB method parameters
-    N_MARKER = 4 * this.D       // Number of markers on cylinder
+    N_MARKER = 4 * VIVSimulation.D       // Number of markers on cylinder
     N_ITER_MDF = 3         // Multi-direct forcing iterations
     IB_MARGIN = 2          // Margin of the IB region to the cylinder
 
     // Physical parameters
-    RE = 1_750_000               // Reynolds number
+    RE = 200               // Reynolds number
     UR = 5                 // Reduced velocity
     MR = 20                // Mass ratio
-    DR = 3                 // Damping ratio
+    DR = 10                 // Damping ratio
 
     // structural parameters
-    FN = this.U0 / (this.UR * this.D)                                          // Natural frequency
-    MASS = Math.PI * (this.D / 2) ** 2 * this.MR                               // Mass of the cylinder
+    FN = VIVSimulation.U0 / (this.UR * VIVSimulation.D)                                          // Natural frequency
+    MASS = Math.PI * (VIVSimulation.D / 2) ** 2 * this.MR                               // Mass of the cylinder
     STIFFNESS = (this.FN * 2 * Math.PI) ** 2 * this.MASS * (1 + 1 / this.MR)   // Stiffness of the spring
     DAMPING = 2 * Math.sqrt(this.STIFFNESS * this.MASS) * this.DR              // Damping of the spring
 
     // fluid parameters
-    NU = this.U0 * this.D / this.RE                                            // Kinematic viscosity
+    NU = VIVSimulation.U0 * VIVSimulation.D / this.RE                                            // Kinematic viscosity
     TAU = 3 * this.NU + 0.5                                                    // Relaxation time
     OMEGA = 1 / this.TAU                                                       // Relaxation parameter
     
@@ -50,7 +50,7 @@ export default class VIVSimulation{
     h: tf.Tensor1D = tf.zeros([2], 'float32');
     
     
-    u0 = tf.fill([this.NX, this.NY], this.U0); // u[0, :, :]
+    u0 = tf.fill([this.NX, this.NY], VIVSimulation.U0); // u[0, :, :]
     u1 = tf.zeros([this.NX, this.NY], 'float32'); // u[1, :, :]
 
     u: tf.Tensor3D = tf.stack([this.u0, this.u1], 0) as tf.Tensor3D;
@@ -81,12 +81,12 @@ export default class VIVSimulation{
         this.X = xr.reshape([this.NX, 1]).tile([1, this.NY]);  // Tensor2D<[NX,NY]>
         this.Y = yr.reshape([1, this.NY]).tile([this.NX, 1]);
 
-        [this.X_MARKERS, this.Y_MARKERS] = this.makeCircleMarkers(this.N_MARKER, this.D, this.X_OBJ, this.Y_OBJ);
-        this.L_ARC = this.D * Math.PI / this.N_MARKER
+        [this.X_MARKERS, this.Y_MARKERS] = this.makeCircleMarkers(this.N_MARKER, VIVSimulation.D, this.X_OBJ, this.Y_OBJ);
+        this.L_ARC = VIVSimulation.D * Math.PI / this.N_MARKER
         
-        this.IB_START_X = Math.floor(this.X_OBJ - 0.5 * this.D - this.IB_MARGIN)
-        this.IB_START_Y = Math.floor(this.Y_OBJ - 0.5 * this.D - this.IB_MARGIN)
-        this.IB_SIZE = this.D + this.IB_MARGIN * 2
+        this.IB_START_X = Math.floor(this.X_OBJ - 0.5 * VIVSimulation.D - this.IB_MARGIN)
+        this.IB_START_Y = Math.floor(this.Y_OBJ - 0.5 * VIVSimulation.D - this.IB_MARGIN)
+        this.IB_SIZE = VIVSimulation.D + this.IB_MARGIN * 2
         
         this.f = lbm.getEquilibrium(this.rho, this.u)
 
@@ -154,7 +154,7 @@ export default class VIVSimulation{
       this.f = this.dynamicUpdateSlice(this.f, patch, [0, ibx, iby])
       
       this.h = ib.getForceToObj(h_markers)
-      const scale = (Math.PI * this.D * this.D) / 4;
+      const scale = (Math.PI * VIVSimulation.D * VIVSimulation.D) / 4;
       this.h = this.h.add(this.a.mul(scale)) as tf.Tensor1D;
       
       [this.a, this.v, this.d] = dyn.newmark2dof(this.a, this.v, this.d, this.h, this.MASS, this.STIFFNESS, this.DAMPING)
@@ -167,24 +167,25 @@ export default class VIVSimulation{
       .tile([1, this.NX, this.NY]) as tf.Tensor3D;  // [9,NX,NY]
     
       this.f = lbm.boundaryEquilibrium(this.f, feqInitFull, 'right');
-      this.f = lbm.velocityBoundary(this.f, this.U0, 0, "left")
+      this.f = lbm.velocityBoundary(this.f, VIVSimulation.U0, 0, "left")
       
       return [this.f, this.rho, this.u, this.d, this.v, this.a, this.h]
     }
 
     
-    public async updateAsync() : Promise<[number, number]>
+    public async updateAsync() : Promise<[number, number, Float32Array]>
     {
         [this.f, this.rho, this.u, this.d, this.v, this.a, this.h] = await this.update();
         
         const curlT = post.calculateCurl(this.u).transpose() as tf.Tensor2D;
+        const curlFloat = await curlT.data() as Float32Array;
 
         const dArr = await this.d.data() as Float32Array;
         const dx = dArr[0], dy = dArr[1];
-        const newX = (0 + dx) / this.D;
-        const newY = (0 + dy) / this.D;
+        const newX = (0 + dx) / VIVSimulation.D;
+        const newY = (0 + dy) / VIVSimulation.D;
 
-        return [newX, newY]
+        return [newX, newY, curlFloat]
     }
 
 
