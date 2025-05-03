@@ -111,9 +111,7 @@ export default class VIVSimulation{
       tf.Tensor1D     // h
     ]>
     {
-      const [rho, u] = lbm.getMacroscopic(this.f);
-      this.rho = rho;
-      this.u = u;
+      [this.rho, this.u] = lbm.getMacroscopic(this.f);
 
       this.feq = lbm.getEquilibrium(this.rho, this.u);
       
