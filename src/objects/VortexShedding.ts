@@ -4,26 +4,28 @@ export default class VortexShedding extends THREE.Mesh
 {
     private width: number;
     private height: number;
-    private resolution: number;
+    private resolutionZ: number;
+    private resolutionX: number;
     curlTexture: THREE.DataTexture | undefined = undefined;
     
-    constructor(width: number, height: number, resolution:number)
+    constructor(width: number, height: number, resolutionZ:number, resolutionX: number)
     {
         super();
 
         this.width = width;
         this.height = height;
-        this.resolution = resolution;
+        this.resolutionZ = resolutionZ;
+        this.resolutionX = resolutionX;
     }
 
-    public update(curl: Float32Array, mastWorldPos: THREE.Vector3)
+    public update(curl: Float32Array)
     {
         if(this.curlTexture == undefined)
         {
             this.curlTexture = new THREE.DataTexture(
                 curl,           // your data
-                this.width,
-                this.height,     // grid dims
+                this.resolutionZ,
+                this.resolutionX,     // grid dims
                 THREE.RedFormat,
                 THREE.FloatType    // 32-bit float
             );
@@ -34,7 +36,7 @@ export default class VortexShedding extends THREE.Mesh
             this.curlTexture.needsUpdate = true;
 
             this.createShaderMaterial();
-            this.geometry = new THREE.PlaneGeometry(this.width, this.height, this.resolution - 1, this.resolution - 1);
+            this.geometry = new THREE.PlaneGeometry(this.width, this.height, this.resolutionZ, this.resolutionX);
         }
         
         this.curlTexture.image.data = curl;

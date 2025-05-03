@@ -25,9 +25,9 @@ export default class VIVSimulation{
     NX = Math.floor(20 * this.D)            // Grid points in x direction
     NY = Math.floor(10 * this.D)            // Grid points in y direction
 
-    // Cylinder position
-    X_OBJ = 8 * this.D          // Cylinder x position
-    Y_OBJ = 5 * this.D          // Cylinder y position
+    // Cyliner position
+    X_OBJ = this.NX / 2          // Cylinder x position
+    Y_OBJ = this.NY / 2          // Cylinder y position
 
     // IB method parameters
     N_MARKER = Math.floor(4 * this.D)       // Number of markers on cylinder
