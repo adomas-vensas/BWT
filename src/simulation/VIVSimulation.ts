@@ -14,8 +14,8 @@ export default class VIVSimulation{
     U_MAX_PHYSICAL = 15 // physical velocity in m/s
     U_MAX_LATTICE = 0.3 // lattice points
     
-    D_PHYSICAL = 1 // physical diameter in m
-    U_PHYSICAL = 5 // physical velocity in m/s
+    D_PHYSICAL = 0.5 // physical diameter in m
+    U_PHYSICAL = 10 // physical velocity in m/s
     
     //15 - 0.3
     //7.5 - x
@@ -35,10 +35,10 @@ export default class VIVSimulation{
     IB_MARGIN = 2          // Margin of the IB region to the cylinder
 
     // Physical parameters
-    RE = 200               // Reynolds number
-    UR = 5                 // Reduced velocity
-    MR = 20                // Mass ratio
-    DR = 10                 // Damping ratio
+    RE = 100               // Reynolds number
+    UR = 1                 // Reduced velocity
+    MR = 5                // Mass ratio
+    DR = 0                 // Damping ratio
 
     // structural parameters
     FN = this.U0 / (this.UR * this.D)                                          // Natural frequency
@@ -164,7 +164,6 @@ export default class VIVSimulation{
       [this.a, this.v, this.d] = dyn.newmark2dof(this.a, this.v, this.d, this.h, this.MASS, this.STIFFNESS, this.DAMPING)
       
       this.f = lbm.streaming(this.f)
-      
 
       const feqInitFull = this.feq_init
       .reshape([9, 1, 1])         // [9,1,1]this.
@@ -181,8 +180,10 @@ export default class VIVSimulation{
     {
         [this.f, this.rho, this.u, this.d, this.v, this.a, this.h] = await this.update();
         
-        const curlT = post.calculateCurl(this.u).transpose() as tf.Tensor2D;
+        const curlT = post.calculateCurl(this.u).transpose().mul(5) as tf.Tensor2D;
         const curlFloat = await curlT.data() as Float32Array;
+        // const curlFloat = new Float32Array();
+
 
         const dArr = await this.d.data() as Float32Array;
         const dx = dArr[0], dy = dArr[1];

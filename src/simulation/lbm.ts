@@ -71,28 +71,21 @@ export function getEquilibrium(
  * @param f tf.Tensor3D of shape [9, NX, NY] - distribution function
  * @returns { rho: tf.Tensor2D, u: tf.Tensor3D [2, NX, NY] } - macroscopic properties
  */
-export function getMacroscopic(
-  f: tf.Tensor3D
-): [tf.Tensor2D, tf.Tensor3D] {
-  return tf.tidy(() => {
-    // rho = sum over directions axis=0
-    const rho = tf.sum(f, 0) as tf.Tensor2D;
+export function getMacroscopic(f: tf.Tensor3D) : [tf.Tensor2D, tf.Tensor3D]
+{
+  const rho = tf.sum(f, 0) as tf.Tensor2D;
 
-    // sum of f over direction subsets, result shape [NX,NY]
-    const sumR = f.gather(RIGHT_DIRS, 0).sum(0);
-    const sumL = f.gather(LEFT_DIRS,  0).sum(0);
-    const sumU = f.gather(UP_DIRS,    0).sum(0);
-    const sumD = f.gather(DOWN_DIRS,  0).sum(0);
+  const right_sum = tf.gather(f, RIGHT_DIRS, 0).sum(0)
+  const left_sum = tf.gather(f, LEFT_DIRS, 0).sum(0)
+  const up_sum = tf.gather(f, UP_DIRS, 0).sum(0)
+  const down_sum = tf.gather(f, DOWN_DIRS, 0).sum(0)
 
-    // u_x = (sumR - sumL) / rho
-    const ux = sumR.sub(sumL).div(rho);
-    // u_y = (sumU - sumD) / rho
-    const uy = sumU.sub(sumD).div(rho);
+  const u0 = tf.sub(right_sum, left_sum).divNoNan(rho);
+  const u1 = tf.sub(up_sum, down_sum).divNoNan(rho);
 
-    // stack into shape [2, NX, NY]
-    const u = tf.stack([ux, uy], 0) as tf.Tensor3D;
-    return [rho, u];
-  });
+  const newU = tf.stack([u0, u1]) as tf.Tensor3D;
+
+  return [rho, newU]
 }
 
 
@@ -140,49 +133,41 @@ export function getDiscretizedForce(
  * @returns Tensor3D<[9, NX, NY]> streamed distributions
  */
 export function streaming(f: tf.Tensor3D): tf.Tensor3D {
-  const RIGHT = new Set([1, 5, 8]);
-  const LEFT  = new Set([3, 7, 6]);
-  const UP    = new Set([2, 5, 6]);
-  const DOWN  = new Set([4, 7, 8]);
 
-  // pre‐roll f along X (axis=1) and Y (axis=2)
-  const fR = roll3d(f,  1, 1);
-  const fL = roll3d(f, -1, 1);
-  const fU = roll3d(f,  1, 2);
-  const fD = roll3d(f, -1, 2);
-
-  // rebuild each direction slice in one pass
-  const out = tf.stack(
-    Array.from({ length: 9 }, (_, d) => {
-      const dir = d as number;
-      if (RIGHT.has(dir)) return fR.gather(dir, 0);
-      if (LEFT.has(dir))  return fL.gather(dir, 0);
-      if (UP.has(dir))    return fU.gather(dir, 0);
-      if (DOWN.has(dir))  return fD.gather(dir, 0);
-      return f.gather(dir, 0);
-    }),
-    0
-  ) as tf.Tensor3D;
-
-  return out;
+  const planes0 = tf.unstack(f, 0);
+  const planes = planes0.map((plane, d) => {
+    let p:tf.Tensor2D = plane as tf.Tensor2D;
+    // x‐shift
+    if (RIGHT_DIRS.includes(d)) {
+      p = roll(p,  1, 0);
+    } else if (LEFT_DIRS.includes(d)) {
+      p = roll(p, -1, 0);
+    }
+    // y‐shift
+    if (UP_DIRS.includes(d)) {
+      p = roll(p,  1, 1);
+    } else if (DOWN_DIRS.includes(d)) {
+      p = roll(p, -1, 1);
+    }
+    return p;
+  });
+  
+  return tf.stack(planes, 0) as tf.Tensor3D;
 }
 
 /** Roll a 3‑D tensor along one spatial axis (1 or 2). */
-function roll3d(x: tf.Tensor3D, shift: number, axis: 1 | 2): tf.Tensor3D {
-  const [d, dim0, dim1] = x.shape;
-  const dim = axis === 1 ? dim0 : dim1;
-  // normalize shift to [0, dim)
+function roll(x: tf.Tensor2D, shift: number, axis: 0 | 1) {
+  const dim = x.shape[axis]!;
   const s = ((shift % dim) + dim) % dim;
   if (s === 0) return x;
-  let part1: tf.Tensor3D, part2: tf.Tensor3D;
-  if (axis === 1) {
-    part1 = x.slice([0, dim - s, 0], [d, s, dim1]);
-    part2 = x.slice([0, 0, 0],     [d, dim - s, dim1]);
-  } else {
-    part1 = x.slice([0, 0, dim - s], [d, dim0, s]);
-    part2 = x.slice([0, 0, 0],     [d, dim0, dim - s]);
-  }
-  return tf.concat([part1, part2], axis) as tf.Tensor3D;
+  return tf.tidy(() => {
+    // 1) int32 range
+    const range = tf.range(0, dim, 1, 'int32');
+    // 2) make s an int32 scalar
+    const s32   = tf.scalar(s, 'int32');
+    const idx   = tf.mod(tf.sub(range, s32), tf.scalar(dim, 'int32'));
+    return x.gather(idx as tf.Tensor1D, axis);
+  });
 }
 
 /**
