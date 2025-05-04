@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 
 interface Current {
+    time: string,
     interval: number,
     wind_speed_10m: number,
     wind_direction_10m: number,
@@ -63,7 +64,8 @@ export function WeatherContext({ children }: { children: React.ReactNode }) {
                   wind_gusts_10m:   data.current_units.wind_gusts_10m,
                 },
                 current: {
-                  interval:         data.current.time,        // or data.current_weather.time ? 
+                  time:             data.current.time,        // or data.current_weather.time ? 
+                  interval:         data.current.interval,        // or data.current_weather.time ? 
                   wind_speed_10m:   data.current.wind_speed_10m,
                   wind_direction_10m: data.current.wind_direction_10m,
                   temperature_2m:   data.current.temperature_2m,
@@ -75,16 +77,11 @@ export function WeatherContext({ children }: { children: React.ReactNode }) {
             setData(mapped)
             setLoading(false)
 
-            // fetch(url)
-            // .then(res => res.json())
-            // .then(d => setData(d))
-            // .catch(err => setError(err.message))
-            // .finally(() => setLoading(false))
         }
 
         fetchWeather()
 
-        const intervalId = setInterval(fetchWeather, 10 * 60 * 1000) //every 10 minutes
+        const intervalId = setInterval(fetchWeather, 15 * 60 * 1000) //every 10 minutes
 
         return () => {
             clearInterval(intervalId)

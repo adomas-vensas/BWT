@@ -31,8 +31,6 @@ const Scene: React.FC = () => {
         scene.background = new THREE.Color('deepskyblue')
     }, [scene])
 
-
-
     useEffect(() => {
         fetch('http://localhost:8000/params')
         .then((res) => res.json())
