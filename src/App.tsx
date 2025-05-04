@@ -1,5 +1,6 @@
-import { Canvas, useFrame, useThree } from "@react-three/fiber"
+import { Canvas } from "@react-three/fiber"
 import Scene from './Scene'
+import { WeatherContext } from './widgets/WeatherContext'
 
 function App() {
   return (
@@ -10,7 +11,9 @@ function App() {
         gl.setSize(window.innerWidth, window.innerHeight)
       }}
       camera={{ position: [0, 30, 0], up: [1, 0, 0], near: 0.1, far: 1000 }}>
-      <Scene />
+        <WeatherContext>
+          <Scene />
+        </WeatherContext>
     </Canvas>
   )
 }
