@@ -92,7 +92,7 @@ let targetZ:number = 0, targetX:number = 0;
 let curl:Float32Array = new Float32Array();
 let lastPosZ:number = targetZ, lastPosX:number = targetX;
 
-await requestNextTarget();
+// await requestNextTarget();
 
 const fpsTracker = new FPSTracker();
 fpsTracker.start();
@@ -110,27 +110,39 @@ async function animate(t: number) {
   {
     lastPosZ = targetZ;
     lastPosX = targetX;
-    requestNextTarget();
-
+    // requestNextTarget();
+    
     lastTime = t;
     stepRatio = 0
   }
-
+  
   fpsTracker.track();
-  mast.sway({z: lastPosZ, x: lastPosX}, {z: lastPosZ, x: lastPosX}, stepRatio);
-  vortexShedding.update(curl);
-
-
+  // mast.sway({z: lastPosZ, x: lastPosX}, {z: lastPosZ, x: lastPosX}, stepRatio);
+  // vortexShedding.update(curl);
 
   controls.update();
   renderer.render( scene, camera );
 }
 renderer.setAnimationLoop( animate );
 
+const url = "ws://localhost:8000/ws/stream"
+const ws = new WebSocket(url);
+ws.binaryType = "arraybuffer";
 
+ws.onopen = () => {
+  console.log("WebSocket connected to", url);
+};
 
-// function fetchAngle(): number
-// {
-//   const receivedAngleInDeg = Math.floor(Math.random() * 360);
-//   return receivedAngleInDeg;
-// }
+ws.onmessage = (event: MessageEvent) => {
+  // 4. event.data is an ArrayBuffer of 2 * NX * NY float32 values
+  const buffer = event.data as ArrayBuffer;
+  const view = new DataView(buffer)
+
+  const newX = view.getFloat32(0, true) 
+  const newY = view.getFloat32(4, true) 
+
+  const curlBuffer = buffer.slice(8);
+  const curl = new Float32Array(curlBuffer);
+
+  vortexShedding.update(curl);
+};
