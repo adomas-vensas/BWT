@@ -63,7 +63,6 @@ vortexShedding.rotateZ(-Math.PI / 2)
 scene.add(vortexShedding);
 
 async function animate(t: number) {
-  
   fpsTracker.track();
 
   controls.update();
