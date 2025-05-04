@@ -4,7 +4,6 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import Ground from './turbine_elements/Ground';
 import Mast from './objects/Mast';
-import Wind from './objects/Wind';
 import * as tf from '@tensorflow/tfjs'
 import VIVSimulation from './simulation/VIVSimulation';
 import '@tensorflow/tfjs-backend-webgpu';
@@ -100,10 +99,11 @@ fpsTracker.start();
 
 const vortexShedding = new VortexShedding(sideSize, sideSize, sim.NX, sim.NY);
 vortexShedding.rotateX(-Math.PI / 2)
+vortexShedding.rotateZ(-Math.PI / 2)
 scene.add(vortexShedding);
 
 async function animate(t: number) {
-  stepRatio += 0.1
+  stepRatio += 0.4
 
 
   if(stepRatio >= reachThreshold)
