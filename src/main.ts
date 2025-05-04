@@ -4,8 +4,6 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import Ground from './turbine_elements/Ground';
 import Mast from './objects/Mast';
-import * as tf from '@tensorflow/tfjs'
-import '@tensorflow/tfjs-backend-webgpu';
 import FPSTracker from './utilities/FPSTracker';
 import VortexShedding from './objects/VortexShedding';
 
@@ -15,10 +13,6 @@ const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerH
 camera.position.set(0, 30, 0); 
 camera.up.set(1, 0, 0);    
 camera.lookAt(0, 0, 0);   
-
-await tf.setBackend('webgl');
-await tf.ready();
-console.log(tf.getBackend())
 
 camera.rotateY(-Math.PI/2);
 const renderer = new THREE.WebGLRenderer({
@@ -53,7 +47,6 @@ controls.enableDamping = true;
 const height = 3
 
 interface Params { NX: number; NY: number; RE: number; UR: number; MR: number, DR: number, D_PHYSICAL: number }
-
 const res = await fetch("http://localhost:8000/params");
 const params = await res.json() as Params;
 console.log(params)
@@ -83,18 +76,15 @@ const url = "ws://localhost:8000/ws/stream"
 const ws = new WebSocket(url);
 ws.binaryType = "arraybuffer";
 
-
-
 ws.onopen = () => {
   console.log("WebSocket connected to", url);
 };
 
 ws.onmessage = (event: MessageEvent) => {
-  // 4. event.data is an ArrayBuffer of 2 * NX * NY float32 values
   const buffer = event.data as ArrayBuffer;
   const view = new DataView(buffer)
 
-  const newX = view.getFloat32(0, true) 
+  const newX = view.getFloat32(0, true)
   const newY = view.getFloat32(4, true)
 
   const curlBuffer = buffer.slice(8);
