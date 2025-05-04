@@ -1,20 +1,30 @@
 import { Canvas } from "@react-three/fiber"
 import Scene from './Scene'
 import { WeatherContext } from './widgets/WeatherContext'
+import WeatherWidget from './widgets/WeatherWidget'
+// import { Stats } from '@react-three/drei'
 
 function App() {
   return (
-    <Canvas
-      className="position: fixed top-0 left-0"
-      onCreated={({ gl }) => {
-        gl.setPixelRatio(window.devicePixelRatio)
-        gl.setSize(window.innerWidth, window.innerHeight)
-      }}
-      camera={{ position: [0, 30, 0], up: [1, 0, 0], near: 0.1, far: 1000 }}>
-        <WeatherContext>
+    <div>
+      <Canvas
+        className="position: fixed top-0 left-0"
+        onCreated={({ gl }) => {
+          gl.setPixelRatio(window.devicePixelRatio)
+          gl.setSize(window.innerWidth, window.innerHeight)
+        }}
+        camera={{ position: [0, 30, 0], up: [1, 0, 0], near: 0.1, far: 1000 }}>
           <Scene />
-        </WeatherContext>
-    </Canvas>
+      </Canvas>
+
+      {/* <Stats className='aboslute bottom-3 right-3 z-20' /> */}
+        
+      <WeatherContext>
+        <div className="absolute top-3 left-3 z-10">
+          <WeatherWidget />
+        </div>
+      </WeatherContext>
+    </div>
   )
 }
 

@@ -6,7 +6,6 @@ import * as THREE from 'three'
 import Ground from './objects/Ground'
 import Mast, { MastHandle } from './objects/Mast'
 import VortexShedding from './objects/VortexShedding'
-import { useData } from './widgets/WeatherContext'
 
 interface Params {
   NX: number
@@ -23,11 +22,6 @@ const Scene: React.FC = () => {
     const mastRef = useRef<MastHandle>(null!)
     const vortexRef = useRef<any>(null!)
     const swayData = useRef<{ x: number; z: number }>({ x: 0, z: 0 })
-    const { data, loading, error } = useData()
-
-    useEffect(() =>{
-        console.log(data)
-    }, [data])
 
     const sideSize = 20;
 
@@ -79,7 +73,6 @@ const Scene: React.FC = () => {
         <axesHelper args={[5]} />
 
         <OrbitControls enableDamping />
-        <Stats />
 
         <Ground sideSize={sideSize} resolutionZ={params.NX} resolutionX={params.NY} />
         <Mast
