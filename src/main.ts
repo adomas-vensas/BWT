@@ -5,7 +5,6 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import Ground from './turbine_elements/Ground';
 import Mast from './objects/Mast';
 import * as tf from '@tensorflow/tfjs'
-import VIVSimulation from './simulation/VIVSimulation';
 import '@tensorflow/tfjs-backend-webgpu';
 import FPSTracker from './utilities/FPSTracker';
 import VortexShedding from './objects/VortexShedding';
