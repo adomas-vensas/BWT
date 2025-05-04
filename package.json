@@ -13,12 +13,9 @@
     "vite": "^6.2.0"
   },
   "dependencies": {
-    "@tensorflow/tfjs": "^4.22.0",
-    "@tensorflow/tfjs-backend-webgpu": "^4.22.0",
     "@types/three": "^0.175.0",
     "install": "^0.13.0",
     "mathjs": "^14.4.0",
-    "meshline": "^3.3.1",
     "npm": "^11.3.0",
     "three": "^0.175.0"
   }
