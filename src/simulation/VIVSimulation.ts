@@ -9,7 +9,7 @@ import '@tensorflow/tfjs-backend-webgpu';
 export default class VIVSimulation{
 
     D_MAX_PHYSICAL = 1 // physical diameter in m
-    D_MAX_LATTICE = 24 // lattice points
+    D_MAX_LATTICE = 15 // lattice points
     
     U_MAX_PHYSICAL = 15 // physical velocity in m/s
     U_MAX_LATTICE = 0.3 // lattice points

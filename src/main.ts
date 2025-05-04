@@ -51,83 +51,40 @@ scene.background = new THREE.Color( 'deepskyblue' );
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
-const sim = new VIVSimulation();
-const height = 3;
-const mast = new Mast({ x: 0, z: 0, y: height / 2, radius: sim.D_PHYSICAL / 2, height: height, lowerFrac: 0.1 });
+const height = 3
+
+interface Params { NX: number; NY: number; RE: number; UR: number; MR: number, DR: number, D_PHYSICAL: number }
+
+const res = await fetch("http://localhost:8000/params");
+const params = await res.json() as Params;
+console.log(params)
+
+const mast = new Mast({ x: 0, z: 0, y: height / 2, radius: params.D_PHYSICAL / 2, height: height, lowerFrac: 0.1 });
 scene.add(mast);
-
-const reachThreshold = 0.95;
-
-const markers: THREE.Mesh[] = [];
-const maxMarkers = 10;
-
-
-function requestNextTarget() {
-  sim.updateAsync().then(([newZ, newX, newCurl]) => {
-    targetX = newX;
-    targetZ = newZ;
-    curl = newCurl;
-
-    const marker = new THREE.Mesh(
-      new THREE.SphereGeometry(0.15, 16, 16),
-      new THREE.MeshBasicMaterial({ color: new THREE.Color(Math.random(), Math.random(), Math.random()) })
-    );
-    marker.position.set(targetX, 2.5, targetZ);
-    scene.add(marker);
-    markers.push(marker);
-
-    if (markers.length > maxMarkers) {
-      const old = markers.shift();
-      scene.remove(old!);
-    }
-  });
-}
-
-
-let lastTime = 0;
-let stepRatio = 0.001
-
-
-let targetZ:number = 0, targetX:number = 0;
-let curl:Float32Array = new Float32Array();
-let lastPosZ:number = targetZ, lastPosX:number = targetX;
-
-// await requestNextTarget();
 
 const fpsTracker = new FPSTracker();
 fpsTracker.start();
 
-const vortexShedding = new VortexShedding(sideSize, sideSize, sim.NX, sim.NY);
+const vortexShedding = new VortexShedding(sideSize, sideSize, params.NX, params.NY);
 vortexShedding.rotateX(-Math.PI / 2)
 vortexShedding.rotateZ(-Math.PI / 2)
 scene.add(vortexShedding);
 
 async function animate(t: number) {
-  stepRatio += 0.4
-
-
-  if(stepRatio >= reachThreshold)
-  {
-    lastPosZ = targetZ;
-    lastPosX = targetX;
-    // requestNextTarget();
-    
-    lastTime = t;
-    stepRatio = 0
-  }
   
   fpsTracker.track();
-  // mast.sway({z: lastPosZ, x: lastPosX}, {z: lastPosZ, x: lastPosX}, stepRatio);
-  // vortexShedding.update(curl);
 
   controls.update();
   renderer.render( scene, camera );
 }
+
 renderer.setAnimationLoop( animate );
 
 const url = "ws://localhost:8000/ws/stream"
 const ws = new WebSocket(url);
 ws.binaryType = "arraybuffer";
+
+
 
 ws.onopen = () => {
   console.log("WebSocket connected to", url);
@@ -139,10 +96,14 @@ ws.onmessage = (event: MessageEvent) => {
   const view = new DataView(buffer)
 
   const newX = view.getFloat32(0, true) 
-  const newY = view.getFloat32(4, true) 
+  const newY = view.getFloat32(4, true)
 
   const curlBuffer = buffer.slice(8);
   const curl = new Float32Array(curlBuffer);
 
   vortexShedding.update(curl);
+
+  requestAnimationFrame((t:number) =>{
+    mast.sway({z: 0, x: 0}, {z: newX, x: newY }, 1)
+  });
 };
