@@ -64,6 +64,8 @@ const Scene: React.FC = () => {
 
     if (!params) return null // or a loading spinner
 
+    const height = 3
+
     return (
         <>
         <ambientLight intensity={0.5} />
@@ -75,9 +77,9 @@ const Scene: React.FC = () => {
         <Ground sideSize={sideSize} resolutionZ={params.NX} resolutionX={params.NY} />
         <Mast
             ref={mastRef}
-            position={[0, params.D_PHYSICAL * 1.5, 0]}
+            position={[0, height / 2, 0]}
             radius={params.D_PHYSICAL / 2}
-            height={3}
+            height={height}
             lowerFrac={0.1}
         />
         <VortexShedding
