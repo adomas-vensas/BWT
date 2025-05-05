@@ -5,7 +5,7 @@ import { WeatherContext } from './widgets/WeatherContext'
 import WeatherWidget from './widgets/WeatherWidget'
 import NavigationBar from "./NavigationBar/NavigationBar"
 import { NavigationOption } from "./NavigationBar/NavigationOption"
-import SimulationPanelModal from './Panels/SimulationPanelModal'
+import SimulationPanelModal from './Panels/Simulation/SimulationPanelModal'
 // import { Stats } from '@react-three/drei'
 
 function App() {
