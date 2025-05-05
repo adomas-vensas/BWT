@@ -2,6 +2,7 @@ import { Canvas } from "@react-three/fiber"
 import Scene from './Scene'
 import { WeatherContext } from './widgets/WeatherContext'
 import WeatherWidget from './widgets/WeatherWidget'
+import NavigationBar from "./NavigationBar/NavigationBar"
 // import { Stats } from '@react-three/drei'
 
 function App() {
@@ -24,6 +25,12 @@ function App() {
           <WeatherWidget />
         </div>
       </WeatherContext>
+      
+      <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 z-10">
+        <NavigationBar />
+      </div>
+
+
     </div>
   )
 }

@@ -40,17 +40,17 @@ const Scene: React.FC = () => {
 
     useEffect(() => {
         if (!params) return
-        const ws = new WebSocket('ws://localhost:8000/ws/stream')
+        const ws = new WebSocket('ws://localhost:8000/stream/calculate')
         ws.binaryType = 'arraybuffer'
         ws.onopen = () => console.log('WS connected')
         ws.onmessage = (evt) => {
-        const buf = evt.data as ArrayBuffer
-        const view = new DataView(buf)
-        const dz = view.getFloat32(0, true)
-        const dx = view.getFloat32(4, true)
-        swayData.current = { z: dz, x: dx }
-        const curlArray = new Float32Array(buf.slice(8))
-        vortexRef.current?.update(curlArray)
+            const buf = evt.data as ArrayBuffer
+            const view = new DataView(buf)
+            const dz = view.getFloat32(0, true)
+            const dx = view.getFloat32(4, true)
+            swayData.current = { z: dz, x: dx }
+            const curlArray = new Float32Array(buf.slice(8))
+            vortexRef.current?.update(curlArray)
         }
         ws.onerror = console.error
         return () => ws.close()

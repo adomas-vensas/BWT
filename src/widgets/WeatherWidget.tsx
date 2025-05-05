@@ -14,7 +14,7 @@ export default function WeatherWidget(){
     const windSpeedUnit = data.currentUnits.wind_speed_10m
 
     return (
-        <div className="bg-white/90 p-3 rounded shadow-lg text-sm space-y-1">
+        <div className="bg-white/60 p-3 rounded shadow-lg text-sm space-y-1">
           <div className="flex items-center">
             <span className="mr-2">🌡️</span>
             <span>{temperature_2m} {temperatureUnit}</span>
