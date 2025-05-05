@@ -29,10 +29,10 @@ export default function SimulationPanelModal({ open }: SimulationPanelModalProps
               {/* Modal body */}
               <div className="p-4 md:p-5 space-y-4">
                 <p className="text-base leading-relaxed text-gray-500 dark:text-gray-400">
-                  <RangeSlider min={0} max={15} step={0.1}/>
+                  <RangeSlider min={0} max={15} step={0.1} unit="m"/>
                 </p>
                 <p className="text-base leading-relaxed text-gray-500 dark:text-gray-400">
-                  The European Union’s General Data Protection Regulation (G.D.P.R.) goes into effect...
+                  Lorem ipsum dolor sit amet consectetur adipisicing elit. Maxime, libero!
                 </p>
               </div>
             </div>
