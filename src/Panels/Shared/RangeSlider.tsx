@@ -1,20 +1,21 @@
 import { useState } from "react";
 
 interface RangeSliderProps {
+    propertyName:string,
     min:number,
     max:number,
     step:number,
     unit?:string
 }
 
-export default function RangeSlider({min, max, step, unit = ""}: RangeSliderProps) {
+export default function RangeSlider({propertyName, min, max, step, unit = ""}: RangeSliderProps) {
 
     const [value, setValue] = useState((max - min) / 2);
 
     return (
         <div className="relative mb-10">
         {/* Current value */}
-        <p className="mt-2 text-sm text-left text-gray-700 dark:text-gray-300">Selected: {value} {unit}</p>
+        <p className="mt-2 text-sm text-left text-gray-700 dark:text-gray-300">{propertyName}: {value} {unit}</p>
         <input
             id="labels-range-input"
             type="range"
