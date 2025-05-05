@@ -8,7 +8,6 @@ export default function WeatherWidget(){
     {
         return null;
     }
-    console.log("hello")
 
     const { temperature_2m, wind_speed_10m, wind_direction_10m } = data.current
     const temperatureUnit = data.currentUnits.temperature_2m
