@@ -24,8 +24,8 @@ export default function WeatherWidget(){
             <span>{degToCompass(wind_direction_10m)} {wind_speed_10m} {windSpeedUnit}</span>
           </div>
           <div className="flex items-center">
-            <span className="mr">Last updated: </span>
-            <span>{data.current.time}</span>
+            <span className="mr">Last updated:</span>
+            <span> {data.current.time}</span>
           </div>
         </div>
       )
