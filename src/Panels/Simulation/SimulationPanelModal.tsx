@@ -19,7 +19,7 @@ export default function SimulationPanelModal({ open }: SimulationPanelModalProps
       };
   
       try {
-        const res = await fetch("http://localhost:8000/params", {
+        const res = await fetch("http://localhost:7910/params", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

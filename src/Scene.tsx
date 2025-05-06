@@ -27,7 +27,7 @@ const Scene: React.FC = () => {
     useEffect(() => {
         const fetchData = async () => {
           try {
-            const res1 = await fetch('http://localhost:8000/params', { method: "GET" });
+            const res1 = await fetch('http://localhost:7910/params', { method: "GET" });
 
             const data1: GetConstraintParameters = await res1.json();
             setConstraints(data1);
@@ -40,14 +40,8 @@ const Scene: React.FC = () => {
                 massRatio: 10,
                 dampingRatio: 0
             }
-            setInitialSimParams(init)
-      
-             await fetch(`http://localhost:8000/params`, {
-                method: "POST",
-                body: JSON.stringify(init),
-                headers: { "Content-Type": "application/json" }  
-            });
 
+            setInitialSimParams(init)
           } catch (error) {
             console.error("Error during chained API calls:", error);
           }
@@ -58,9 +52,16 @@ const Scene: React.FC = () => {
     useEffect(() => {
         if (!constraints || !initialSimParams) return
         console.log(initialSimParams)
-        const ws = new WebSocket('ws://localhost:8000/stream/calculate')
+        const ws = new WebSocket('ws://localhost:7910/stream/calculate')
         ws.binaryType = 'arraybuffer'
-        ws.onopen = () => console.log('WS connected')
+        ws.onopen = () => {
+            console.log('WS connected')
+            
+            ws.send(JSON.stringify({
+                type: "init_params",
+                body: initialSimParams
+            }))
+        } 
         ws.onmessage = (evt) => {
             const buf = evt.data as ArrayBuffer
             const view = new DataView(buf)
