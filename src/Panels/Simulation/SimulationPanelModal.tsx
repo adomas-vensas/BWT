@@ -10,7 +10,9 @@ export default function SimulationPanelModal({ open }: SimulationPanelModalProps
     if (!open) return null;
 
     const [windSpeed, setWindSpeed] = useState<number>(0);
-    
+    const [cylinderDiameter, setCylinderDiameter] = useState<number>(0);
+
+
     const handleSend = async () => {
       const payload = {
         windSpeed: windSpeed,
@@ -53,10 +55,9 @@ export default function SimulationPanelModal({ open }: SimulationPanelModalProps
               </div>
 
               {/* Modal body */}
-              <div className="p-4 md:p-5 space-y-4">
-                <p className="text-base leading-relaxed text-gray-500 dark:text-gray-400">
+              <div className="p-4 md:p-5 space-y-4 leading-relaxed">
                   <RangeSlider propertyName="Wind Speed" onChange={setWindSpeed} min={0} max={15} step={0.1} unit="m/s"/>
-                </p>
+                  <RangeSlider propertyName="Cylinder Diameter" onChange={setCylinderDiameter} min={0} max={1} step={0.1} unit="m"/>
                 <p className="text-base leading-relaxed text-gray-500 dark:text-gray-400">
                   Lorem ipsum dolor sit amet consectetur adipisicing elit. Maxime, libero!
                 </p>
