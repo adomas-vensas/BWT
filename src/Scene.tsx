@@ -1,28 +1,22 @@
 import React, { useRef, useEffect, useState } from 'react'
 import { useThree } from '@react-three/fiber'
-import { Canvas, useFrame } from '@react-three/fiber'
-import { OrbitControls, Stats } from '@react-three/drei'
+import { useFrame } from '@react-three/fiber'
+import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import Ground from './objects/Ground'
 import Mast, { MastHandle } from './objects/Mast'
 import VortexShedding from './objects/VortexShedding'
+import GetConstraintParameters from './API/GetConstraintParameters'
+import { PostSimulationParams } from './API/PostSimulationParams'
 
-interface Params {
-  NX: number
-  NY: number
-  RE: number
-  UR: number
-  MR: number
-  DR: number
-  D_PHYSICAL: number
-}
+
 
 const Scene: React.FC = () => {
-    const [params, setParams] = useState<Params | null>(null)
+    const [constraints, setConstraints] = useState<GetConstraintParameters | null>(null)
+    const [initialSimParams, setInitialSimParams] = useState<PostSimulationParams | null>(null)
     const mastRef = useRef<MastHandle>(null!)
     const vortexRef = useRef<any>(null!)
     const swayData = useRef<{ x: number; z: number }>({ x: 0, z: 0 })
-
     const sideSize = 20;
 
     const { scene } = useThree()
@@ -30,16 +24,40 @@ const Scene: React.FC = () => {
     useEffect(() =>{
         scene.background = new THREE.Color('deepskyblue')
     }, [scene])
+    useEffect(() => {
+        const fetchData = async () => {
+          try {
+            const res1 = await fetch('http://localhost:8000/params', { method: "GET" });
+
+            const data1: GetConstraintParameters = await res1.json();
+            setConstraints(data1);
+
+            const init = {
+                windSpeed: data1.maxWindSpeed / 2,
+                cylinderDiameter: data1.maxDiameter / 2,
+                reynoldsNumber: 150,
+                reducedVelocity: 5,
+                massRatio: 10,
+                dampingRatio: 0
+            }
+            setInitialSimParams(init)
+      
+             await fetch(`http://localhost:8000/params`, {
+                method: "POST",
+                body: JSON.stringify(init),
+                headers: { "Content-Type": "application/json" }  
+            });
+
+          } catch (error) {
+            console.error("Error during chained API calls:", error);
+          }
+        };
+        fetchData();
+      }, []);
 
     useEffect(() => {
-        fetch('http://localhost:8000/params')
-        .then((res) => res.json())
-        .then((data: Params) => setParams(data))
-        .catch(console.error)
-    }, [])
-
-    useEffect(() => {
-        if (!params) return
+        if (!constraints || !initialSimParams) return
+        console.log(initialSimParams)
         const ws = new WebSocket('ws://localhost:8000/stream/calculate')
         ws.binaryType = 'arraybuffer'
         ws.onopen = () => console.log('WS connected')
@@ -54,15 +72,15 @@ const Scene: React.FC = () => {
         }
         ws.onerror = console.error
         return () => ws.close()
-    }, [params])
+    }, [constraints, initialSimParams])
 
     // 3) Animation loop: apply sway to mast each frame
-    useFrame((_, delta) => {
+    useFrame((_) => {
         const { x, z } = swayData.current
         mastRef.current?.sway({ x: 0, z: 0 }, { z, x }, 1)
     })
 
-    if (!params) return null // or a loading spinner
+    if (!constraints || !initialSimParams) return null // or a loading spinner
 
     const height = 3
 
@@ -74,11 +92,11 @@ const Scene: React.FC = () => {
 
         <OrbitControls enableDamping />
 
-        <Ground sideSize={sideSize} resolutionZ={params.NX} resolutionX={params.NY} />
+        <Ground sideSize={sideSize} resolutionZ={constraints.NX} resolutionX={constraints.NY} />
         <Mast
             ref={mastRef}
             position={[0, height / 2, 0]}
-            radius={params.D_PHYSICAL / 2}
+            radius={0.5 / 2}
             height={height}
             lowerFrac={0.1}
         />
@@ -86,8 +104,8 @@ const Scene: React.FC = () => {
             ref={vortexRef}
             width={sideSize}
             height={sideSize}
-            resolutionZ={params.NX}
-            resolutionX={params.NY}
+            resolutionZ={constraints.NX}
+            resolutionX={constraints.NY}
             rotation={[-Math.PI / 2, 0, -Math.PI / 2]}
         />
         </>

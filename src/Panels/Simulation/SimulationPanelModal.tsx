@@ -1,4 +1,5 @@
 import RangeSlider from "../Shared/RangeSlider";
+import { useState } from "react";
 
 interface SimulationPanelModalProps {
     open: boolean
@@ -7,16 +8,41 @@ interface SimulationPanelModalProps {
 
 export default function SimulationPanelModal({ open }: SimulationPanelModalProps) {
     if (!open) return null;
+
+    const [windSpeed, setWindSpeed] = useState<number>(0);
+    
+    const handleSend = async () => {
+      const payload = {
+        windSpeed: windSpeed,
+      };
   
+      try {
+        const res = await fetch("http://localhost:8000/params", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+  
+        if (!res.ok) {
+          throw new Error("Failed to send data");
+        }
+  
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
     return (
       <div
         aria-hidden="false"
         className="fixed top-4 bottom-4 right-1 z-40 flex justify-end pointer-events-auto"
       >
         {/* Outer wrapper with margins */}
-        <div className="mt-4 mb-4 mr-4 h-[calc(100%-2rem)] w-full max-w-md">
+        <div className="mt-2 mb-4 mr-4 h-[calc(100%-2rem)] w-full max-w-md">
           {/* Modal content */}
-          <div className="h-full bg-white rounded-lg shadow-xl overflow-y-auto relative">
+          <div className="h-11/12 bg-white rounded-lg shadow-xl overflow-y-auto relative">
             <div className="relative bg-white rounded-lg shadow-sm dark:bg-gray-700 h-full">
 
               {/* Modal header */}
@@ -29,14 +55,14 @@ export default function SimulationPanelModal({ open }: SimulationPanelModalProps
               {/* Modal body */}
               <div className="p-4 md:p-5 space-y-4">
                 <p className="text-base leading-relaxed text-gray-500 dark:text-gray-400">
-                  <RangeSlider propertyName="Wind Speed" min={0} max={15} step={0.1} unit="m/s"/>
+                  <RangeSlider propertyName="Wind Speed" onChange={setWindSpeed} min={0} max={15} step={0.1} unit="m/s"/>
                 </p>
                 <p className="text-base leading-relaxed text-gray-500 dark:text-gray-400">
                   Lorem ipsum dolor sit amet consectetur adipisicing elit. Maxime, libero!
                 </p>
               </div>
 
-              <button className="bg-amber-50 rounded-lg ml-2">Send data</button>
+              <button className="bg-amber-50 rounded-lg ml-2" onClick={handleSend}>Send data</button>
             </div>
           </div>
         </div>

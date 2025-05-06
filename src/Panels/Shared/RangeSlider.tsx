@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface RangeSliderProps {
     propertyName:string,
@@ -6,11 +6,16 @@ interface RangeSliderProps {
     max:number,
     step:number,
     unit?:string
+    onChange: (value: number) => void;
 }
 
-export default function RangeSlider({propertyName, min, max, step, unit = ""}: RangeSliderProps) {
+export default function RangeSlider({propertyName, min, max, step, onChange, unit=""}: RangeSliderProps) {
 
     const [value, setValue] = useState((max - min) / 2);
+
+    useEffect(() =>{
+        onChange(value)
+    }, [value])
 
     return (
         <div className="relative mb-10">

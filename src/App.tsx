@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { Canvas } from "@react-three/fiber"
 import Scene from './Scene'
 import { WeatherContext } from './widgets/WeatherContext'
