@@ -1,5 +1,6 @@
 export enum NavigationOption {
     RealTime   = "Real Time",
     Simulation = "Simulation",
-    About = "About"
+    About = "About",
+    None = "None"
 }

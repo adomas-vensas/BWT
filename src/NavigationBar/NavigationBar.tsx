@@ -5,12 +5,12 @@ import about from "../assets/NavigationBar/about.png"
 import { NavigationOption } from './NavigationOption'
 
 
-interface Props {
+interface NavigationBarProps {
     selected: NavigationOption
     onSelect: (opt: NavigationOption) => void
 }
 
-export default function NavigationBar({ selected, onSelect} : Props){
+export default function NavigationBar({ selected, onSelect} : NavigationBarProps){
     return (
         <div>
 

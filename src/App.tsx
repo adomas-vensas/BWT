@@ -33,7 +33,10 @@ function App() {
       </WeatherContext>
       
       <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 z-10">
-        <NavigationBar selected={selected} onSelect={opt => setSelected(opt)} />
+        <NavigationBar selected={selected} onSelect={opt => {
+          const select = opt == selected ? NavigationOption.None : opt;
+          setSelected(select)
+        }} />
       </div>
       
       <SimulationPanelModal
