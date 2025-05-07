@@ -6,14 +6,12 @@ import * as THREE from 'three'
 import Ground from './objects/Ground'
 import Mast, { MastHandle } from './objects/Mast'
 import VortexShedding from './objects/VortexShedding'
-import GetConstraintParameters from './API/GetConstraintParameters'
-import { PostSimulationParams } from './API/PostSimulationParams'
+import { InitialSimulationParams } from './API/InitialSimulationParams'
+import { floor } from 'mathjs'
 
 
 
 const Scene: React.FC = () => {
-    const [constraints, setConstraints] = useState<GetConstraintParameters | null>(null)
-    const [initialSimParams, setInitialSimParams] = useState<PostSimulationParams | null>(null)
     const mastRef = useRef<MastHandle>(null!)
     const vortexRef = useRef<any>(null!)
     const swayData = useRef<{ x: number; z: number }>({ x: 0, z: 0 })
@@ -24,44 +22,40 @@ const Scene: React.FC = () => {
     useEffect(() =>{
         scene.background = new THREE.Color('deepskyblue')
     }, [scene])
-    useEffect(() => {
-        const fetchData = async () => {
-          try {
-            const res1 = await fetch('http://localhost:7910/params', { method: "GET" });
 
-            const data1: GetConstraintParameters = await res1.json();
-            setConstraints(data1);
+    const dMaxPhysical = 1
+    const dMaxLattice = 15
+    const uMaxPhysical = 15
+    const uMaxLattice = 0.3
 
-            const init = {
-                windSpeed: data1.maxWindSpeed / 2,
-                cylinderDiameter: data1.maxDiameter / 2,
-                reynoldsNumber: 150,
-                reducedVelocity: 5,
-                massRatio: 10,
-                dampingRatio: 0
-            }
+    const dPhysical = dMaxPhysical * 0.5
+    const d = (dMaxLattice * dPhysical) / dMaxPhysical
+    
+    const uPhysical = uMaxPhysical * 0.5
+    const u0 = (uMaxLattice * uPhysical) / uMaxPhysical 
 
-            setInitialSimParams(init)
-          } catch (error) {
-            console.error("Error during chained API calls:", error);
-          }
-        };
-        fetchData();
-      }, []);
+    const init: InitialSimulationParams = {
+        windSpeed: u0,
+        cylinderDiameter: d,
+        reynoldsNumber: 150,
+        reducedVelocity: 5,
+        massRatio: 10,
+        dampingRatio: 0,
+        nx: floor(20 * d),
+        ny: floor(10 * d)
+    }
 
     useEffect(() => {
-        if (!constraints || !initialSimParams) return
-        console.log(initialSimParams)
         const ws = new WebSocket('ws://localhost:7910/stream/calculate')
         ws.binaryType = 'arraybuffer'
         ws.onopen = () => {
             console.log('WS connected')
-            
+
             ws.send(JSON.stringify({
                 type: "init_params",
-                body: initialSimParams
+                body: init
             }))
-        } 
+        }
         ws.onmessage = (evt) => {
             const buf = evt.data as ArrayBuffer
             const view = new DataView(buf)
@@ -73,15 +67,13 @@ const Scene: React.FC = () => {
         }
         ws.onerror = console.error
         return () => ws.close()
-    }, [constraints, initialSimParams])
+    }, [])
 
     // 3) Animation loop: apply sway to mast each frame
     useFrame((_) => {
         const { x, z } = swayData.current
         mastRef.current?.sway({ x: 0, z: 0 }, { z, x }, 1)
     })
-
-    if (!constraints || !initialSimParams) return null // or a loading spinner
 
     const height = 3
 
@@ -93,7 +85,7 @@ const Scene: React.FC = () => {
 
         <OrbitControls enableDamping />
 
-        <Ground sideSize={sideSize} resolutionZ={constraints.NX} resolutionX={constraints.NY} />
+        <Ground sideSize={sideSize} resolutionZ={init.nx!} resolutionX={init.ny!} />
         <Mast
             ref={mastRef}
             position={[0, height / 2, 0]}
@@ -105,8 +97,8 @@ const Scene: React.FC = () => {
             ref={vortexRef}
             width={sideSize}
             height={sideSize}
-            resolutionZ={constraints.NX}
-            resolutionX={constraints.NY}
+            resolutionZ={init.nx!}
+            resolutionX={init.ny!}
             rotation={[-Math.PI / 2, 0, -Math.PI / 2]}
         />
         </>
