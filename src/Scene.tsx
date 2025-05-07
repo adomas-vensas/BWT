@@ -1,28 +1,24 @@
 import React, { useRef, useEffect, useState } from 'react'
 import { useThree } from '@react-three/fiber'
-import { Canvas, useFrame } from '@react-three/fiber'
-import { OrbitControls, Stats } from '@react-three/drei'
+import { useFrame } from '@react-three/fiber'
+import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import Ground from './objects/Ground'
 import Mast, { MastHandle } from './objects/Mast'
 import VortexShedding from './objects/VortexShedding'
+import { SimulationParamsRequest } from './API/SimulationParamsRequest'
+import { getSocket } from './utilities/WebSocketSingleton'
 
-interface Params {
-  NX: number
-  NY: number
-  RE: number
-  UR: number
-  MR: number
-  DR: number
-  D_PHYSICAL: number
+
+interface SceneProps{
+    params: SimulationParamsRequest;
 }
 
-const Scene: React.FC = () => {
-    const [params, setParams] = useState<Params | null>(null)
+export default function Scene({params}: SceneProps) {
     const mastRef = useRef<MastHandle>(null!)
     const vortexRef = useRef<any>(null!)
     const swayData = useRef<{ x: number; z: number }>({ x: 0, z: 0 })
-
+    const isFirst = useRef(true)
     const sideSize = 20;
 
     const { scene } = useThree()
@@ -32,37 +28,55 @@ const Scene: React.FC = () => {
     }, [scene])
 
     useEffect(() => {
-        fetch('http://localhost:8000/params')
-        .then((res) => res.json())
-        .then((data: Params) => setParams(data))
-        .catch(console.error)
-    }, [])
-
-    useEffect(() => {
-        if (!params) return
-        const ws = new WebSocket('ws://localhost:8000/ws/stream')
-        ws.binaryType = 'arraybuffer'
-        ws.onopen = () => console.log('WS connected')
-        ws.onmessage = (evt) => {
-        const buf = evt.data as ArrayBuffer
-        const view = new DataView(buf)
-        const dz = view.getFloat32(0, true)
-        const dx = view.getFloat32(4, true)
-        swayData.current = { z: dz, x: dx }
-        const curlArray = new Float32Array(buf.slice(8))
-        vortexRef.current?.update(curlArray)
+        const ws = getSocket()
+    
+        const onMessage = (evt: MessageEvent<ArrayBuffer>) => {
+          const view = new DataView(evt.data)
+          const dz = view.getFloat32(0, true)
+          const dx = view.getFloat32(4, true)
+          swayData.current = { z: dz, x: dx }
+    
+          const curlArray = new Float32Array(evt.data.slice(8))
+          vortexRef.current?.update(curlArray)
         }
-        ws.onerror = console.error
-        return () => ws.close()
-    }, [params])
+    
+        ws.addEventListener('message', onMessage)
+        ws.addEventListener('error', console.error)
+    
+        return () => {
+          ws.removeEventListener('message', onMessage)
+          ws.removeEventListener('error', console.error)
+          ws.close()
+        }
+      }, [])
+    
+      // 3) whenever params changes, send either “init” (first time) or “update”
+      useEffect(() => {
+        const ws = getSocket()
+        const messageType = isFirst.current ? 'init_params' : 'update_params'
+        const payload = JSON.stringify({ type: messageType, body: params })
+    
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(payload)
+        } else {
+          // queue it up if still connecting
+          const onOpen = () => {
+            ws.send(payload)
+            ws.removeEventListener('open', onOpen)
+          }
+          ws.addEventListener('open', onOpen)
+        }
+    
+        isFirst.current = false
+      }, [params])
 
     // 3) Animation loop: apply sway to mast each frame
-    useFrame((_, delta) => {
+    useFrame(() => {
         const { x, z } = swayData.current
         mastRef.current?.sway({ x: 0, z: 0 }, { z, x }, 1)
     })
 
-    if (!params) return null // or a loading spinner
+    const height = 3
 
     return (
         <>
@@ -72,24 +86,22 @@ const Scene: React.FC = () => {
 
         <OrbitControls enableDamping />
 
-        <Ground sideSize={sideSize} resolutionZ={params.NX} resolutionX={params.NY} />
+        <Ground sideSize={sideSize} resolutionZ={params.nx} resolutionX={params.ny} />
         <Mast
             ref={mastRef}
-            position={[0, params.D_PHYSICAL * 1.5, 0]}
-            radius={params.D_PHYSICAL / 2}
-            height={3}
+            position={[0, height / 2, 0]}
+            radius={0.5 / 2}
+            height={height}
             lowerFrac={0.1}
         />
         <VortexShedding
             ref={vortexRef}
             width={sideSize}
             height={sideSize}
-            resolutionZ={params.NX}
-            resolutionX={params.NY}
+            resolutionZ={params.nx}
+            resolutionX={params.ny}
             rotation={[-Math.PI / 2, 0, -Math.PI / 2]}
         />
         </>
     )
 }
-
-export default Scene

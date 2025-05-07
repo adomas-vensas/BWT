@@ -8,14 +8,13 @@ export default function WeatherWidget(){
     {
         return null;
     }
-    console.log("hello")
 
     const { temperature_2m, wind_speed_10m, wind_direction_10m } = data.current
     const temperatureUnit = data.currentUnits.temperature_2m
     const windSpeedUnit = data.currentUnits.wind_speed_10m
 
     return (
-        <div className="bg-white/90 p-3 rounded shadow-lg text-sm space-y-1">
+        <div className="bg-white/60 p-3 rounded shadow-lg text-sm space-y-1">
           <div className="flex items-center">
             <span className="mr-2">🌡️</span>
             <span>{temperature_2m} {temperatureUnit}</span>
@@ -25,8 +24,8 @@ export default function WeatherWidget(){
             <span>{degToCompass(wind_direction_10m)} {wind_speed_10m} {windSpeedUnit}</span>
           </div>
           <div className="flex items-center">
-            <span className="mr">Last updated: </span>
-            <span>{data.current.time}</span>
+            <span className="mr">Last updated:</span>
+            <span> {data.current.time}</span>
           </div>
         </div>
       )
