@@ -6,15 +6,19 @@ import * as THREE from 'three'
 import Ground from './objects/Ground'
 import Mast, { MastHandle } from './objects/Mast'
 import VortexShedding from './objects/VortexShedding'
-import { InitialSimulationParams } from './API/InitialSimulationParams'
-import { floor } from 'mathjs'
+import { SimulationParamsRequest } from './API/SimulationParamsRequest'
+import { getSocket } from './utilities/WebSocketSingleton'
 
 
+interface SceneProps{
+    params: SimulationParamsRequest;
+}
 
-const Scene: React.FC = () => {
+export default function Scene({params}: SceneProps) {
     const mastRef = useRef<MastHandle>(null!)
     const vortexRef = useRef<any>(null!)
     const swayData = useRef<{ x: number; z: number }>({ x: 0, z: 0 })
+    const isFirst = useRef(true)
     const sideSize = 20;
 
     const { scene } = useThree()
@@ -23,54 +27,51 @@ const Scene: React.FC = () => {
         scene.background = new THREE.Color('deepskyblue')
     }, [scene])
 
-    const dMaxPhysical = 1
-    const dMaxLattice = 15
-    const uMaxPhysical = 15
-    const uMaxLattice = 0.3
-
-    const dPhysical = dMaxPhysical * 0.5
-    const d = (dMaxLattice * dPhysical) / dMaxPhysical
-    
-    const uPhysical = uMaxPhysical * 0.5
-    const u0 = (uMaxLattice * uPhysical) / uMaxPhysical 
-
-    const init: InitialSimulationParams = {
-        windSpeed: u0,
-        cylinderDiameter: d,
-        reynoldsNumber: 150,
-        reducedVelocity: 5,
-        massRatio: 10,
-        dampingRatio: 0,
-        nx: floor(20 * d),
-        ny: floor(10 * d)
-    }
-
     useEffect(() => {
-        const ws = new WebSocket('ws://localhost:7910/stream/calculate')
-        ws.binaryType = 'arraybuffer'
-        ws.onopen = () => {
-            console.log('WS connected')
-
-            ws.send(JSON.stringify({
-                type: "init_params",
-                body: init
-            }))
+        const ws = getSocket()
+    
+        const onMessage = (evt: MessageEvent<ArrayBuffer>) => {
+          const view = new DataView(evt.data)
+          const dz = view.getFloat32(0, true)
+          const dx = view.getFloat32(4, true)
+          swayData.current = { z: dz, x: dx }
+    
+          const curlArray = new Float32Array(evt.data.slice(8))
+          vortexRef.current?.update(curlArray)
         }
-        ws.onmessage = (evt) => {
-            const buf = evt.data as ArrayBuffer
-            const view = new DataView(buf)
-            const dz = view.getFloat32(0, true)
-            const dx = view.getFloat32(4, true)
-            swayData.current = { z: dz, x: dx }
-            const curlArray = new Float32Array(buf.slice(8))
-            vortexRef.current?.update(curlArray)
+    
+        ws.addEventListener('message', onMessage)
+        ws.addEventListener('error', console.error)
+    
+        return () => {
+          ws.removeEventListener('message', onMessage)
+          ws.removeEventListener('error', console.error)
+          ws.close()
         }
-        ws.onerror = console.error
-        return () => ws.close()
-    }, [])
+      }, [])
+    
+      // 3) whenever params changes, send either “init” (first time) or “update”
+      useEffect(() => {
+        const ws = getSocket()
+        const messageType = isFirst.current ? 'init_params' : 'update_params'
+        const payload = JSON.stringify({ type: messageType, body: params })
+    
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(payload)
+        } else {
+          // queue it up if still connecting
+          const onOpen = () => {
+            ws.send(payload)
+            ws.removeEventListener('open', onOpen)
+          }
+          ws.addEventListener('open', onOpen)
+        }
+    
+        isFirst.current = false
+      }, [params])
 
     // 3) Animation loop: apply sway to mast each frame
-    useFrame((_) => {
+    useFrame(() => {
         const { x, z } = swayData.current
         mastRef.current?.sway({ x: 0, z: 0 }, { z, x }, 1)
     })
@@ -85,7 +86,7 @@ const Scene: React.FC = () => {
 
         <OrbitControls enableDamping />
 
-        <Ground sideSize={sideSize} resolutionZ={init.nx!} resolutionX={init.ny!} />
+        <Ground sideSize={sideSize} resolutionZ={params.nx} resolutionX={params.ny} />
         <Mast
             ref={mastRef}
             position={[0, height / 2, 0]}
@@ -97,12 +98,10 @@ const Scene: React.FC = () => {
             ref={vortexRef}
             width={sideSize}
             height={sideSize}
-            resolutionZ={init.nx!}
-            resolutionX={init.ny!}
+            resolutionZ={params.nx}
+            resolutionX={params.ny}
             rotation={[-Math.PI / 2, 0, -Math.PI / 2]}
         />
         </>
     )
 }
-
-export default Scene

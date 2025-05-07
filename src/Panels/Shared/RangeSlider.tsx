@@ -5,13 +5,14 @@ interface RangeSliderProps {
     min:number,
     max:number,
     step:number,
-    unit?:string
+    unit?:string,
+    initialValue:number,
     onChange: (value: number) => void;
 }
 
-export default function RangeSlider({propertyName, min, max, step, onChange, unit=""}: RangeSliderProps) {
+export default function RangeSlider({propertyName, min, max, step, initialValue, onChange, unit=""}: RangeSliderProps) {
 
-    const [value, setValue] = useState((max - min) / 2);
+    const [value, setValue] = useState<number>(initialValue)
 
     useEffect(() =>{
         onChange(value)

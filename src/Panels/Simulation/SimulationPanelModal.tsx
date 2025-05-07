@@ -1,39 +1,38 @@
 import RangeSlider from "../Shared/RangeSlider";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { SimulationParamsRequest } from "../../API/SimulationParamsRequest";
+import { calculateDLattice, calculateULattice, calculateResolutions, dMaxPhysical, uMaxPhysical } from '../../utilities/constraints'
 
 interface SimulationPanelModalProps {
     open: boolean
+    onChange: (params: SimulationParamsRequest) => void;
+    params: SimulationParamsRequest
 }
 
 
-export default function SimulationPanelModal({ open }: SimulationPanelModalProps) {
+export default function SimulationPanelModal({ open, onChange, params }: SimulationPanelModalProps) {
     if (!open) return null;
 
-    const [windSpeed, setWindSpeed] = useState<number>(0);
-    const [cylinderDiameter, setCylinderDiameter] = useState<number>(0);
-
+    const [windSpeed, setWindSpeed] = useState<number>(params.windSpeed);
+    const [cylinderDiameter, setCylinderDiameter] = useState<number>(params.cylinderDiameter);
 
     const handleSend = async () => {
-      const payload = {
-        windSpeed: windSpeed,
-      };
+      const d = calculateDLattice(cylinderDiameter)
+      const u0 = calculateULattice(windSpeed)
+      const [nx, ny] = calculateResolutions(d)
   
-      try {
-        const res = await fetch("http://localhost:7910/params", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        });
-  
-        if (!res.ok) {
-          throw new Error("Failed to send data");
-        }
-  
-      } catch (err) {
-        console.error(err);
+      const params: SimulationParamsRequest = {
+          windSpeed: u0,
+          cylinderDiameter: d,
+          reynoldsNumber: 150,
+          reducedVelocity: 5,
+          massRatio: 10,
+          dampingRatio: 0,
+          nx: nx,
+          ny: ny
       }
+
+      onChange(params);
     };
 
     return (
@@ -56,8 +55,8 @@ export default function SimulationPanelModal({ open }: SimulationPanelModalProps
 
               {/* Modal body */}
               <div className="p-4 md:p-5 space-y-4 leading-relaxed">
-                  <RangeSlider propertyName="Wind Speed" onChange={setWindSpeed} min={0} max={15} step={0.1} unit="m/s"/>
-                  <RangeSlider propertyName="Cylinder Diameter" onChange={setCylinderDiameter} min={0} max={1} step={0.1} unit="m"/>
+                  <RangeSlider propertyName="Wind Speed" onChange={setWindSpeed} min={0.1} max={uMaxPhysical} initialValue={uMaxPhysical * 0.5} step={0.1} unit="m/s"/>
+                  <RangeSlider propertyName="Cylinder Diameter" onChange={setCylinderDiameter} min={0.1} max={dMaxPhysical} initialValue={dMaxPhysical * 0.5} step={0.1} unit="m"/>
                 <p className="text-base leading-relaxed text-gray-500 dark:text-gray-400">
                   Lorem ipsum dolor sit amet consectetur adipisicing elit. Maxime, libero!
                 </p>

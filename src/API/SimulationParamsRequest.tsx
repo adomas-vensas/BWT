@@ -1,4 +1,4 @@
-export interface InitialSimulationParams {
+export interface SimulationParamsRequest {
     reynoldsNumber: number;
     reducedVelocity: number;
     dampingRatio: number;
