@@ -58,7 +58,7 @@ export default function SimulationPanelModal({ open, onChange, params }: Simulat
                   <RangeSlider propertyName="Wind Speed" onChange={setWindSpeed} min={0.1} max={uMaxPhysical} initialValue={uMaxPhysical * 0.5} step={0.1} unit="m/s"/>
                   <RangeSlider propertyName="Cylinder Diameter" onChange={setCylinderDiameter} min={0.1} max={dMaxPhysical} initialValue={dMaxPhysical * 0.5} step={0.1} unit="m"/>
                 <p className="text-base leading-relaxed text-gray-500 dark:text-gray-400">
-                  Lorem ipsum dolor sit amet consectetur adipisicing elit. Maxime, libero!
+                  Here you can simulate the VIV motion by providing some custom parameters.
                 </p>
               </div>
 

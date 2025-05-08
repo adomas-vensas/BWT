@@ -18,6 +18,7 @@ export default function RealTimePanelModal({ open }: RealTimePanelModalProps) {
     const { temperature_2m, wind_speed_10m, wind_direction_10m, time } = data.current
     const temperatureUnit = data.currentUnits.temperature_2m
     const windSpeedUnit = data.currentUnits.wind_speed_10m
+
     // const [windSpeed, setWindSpeed] = useState<number>(params.windSpeed);
     // const [cylinderDiameter, setCylinderDiameter] = useState<number>(params.cylinderDiameter);
 
@@ -41,20 +42,20 @@ export default function RealTimePanelModal({ open }: RealTimePanelModalProps) {
 
               {/* Modal body */}
               <div className="p-4 md:p-5 space-y-4 leading-relaxed">
-                <p className="text-base leading-relaxed text-gray-500 dark:text-gray-400">
-                  Lorem ipsum dolor sit amet consectetur adipisicing elit. Maxime, libero!
-                </p>
-                <p className="text-base leading-relaxed text-gray-500 dark:text-gray-400">
+                <p className="text-base leading-relaxed  text-gray-700 dark:text-gray-300">
                   Wind Speed: {wind_speed_10m} {windSpeedUnit}
                 </p>
-                <p className="text-base leading-relaxed text-gray-500 dark:text-gray-400">
+                <p className="text-base leading-relaxed  text-gray-700 dark:text-gray-300">
                   Wind Direction: {degToCompass(wind_direction_10m)}
                 </p>
-                <p className="text-base leading-relaxed text-gray-500 dark:text-gray-400">
+                <p className="text-base leading-relaxed  text-gray-700 dark:text-gray-300">
                   Temperature: {temperature_2m} {temperatureUnit}
                 </p>
-                <p className="text-base leading-relaxed text-gray-500 dark:text-gray-400">
-                  Last Updated: {time}
+                <p className="text-base leading-relaxed  text-gray-700 dark:text-gray-300">
+                  Last Updated: {time.replace("T", " ")}
+                </p>
+                <p className="text-base leading-relaxed  text-gray-700 dark:text-gray-300">
+                  Here are the real time parameters that are currently driving the simulation.
                 </p>
               </div>
             </div>
