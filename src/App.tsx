@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { Canvas } from "@react-three/fiber"
 import Scene from './Scene'
-import { WeatherContext } from './widgets/WeatherContext'
-import WeatherWidget from './widgets/WeatherWidget'
+import { WeatherContext } from './Panels/RealTime/WeatherContext'
 import NavigationBar from "./NavigationBar/NavigationBar"
 import { NavigationOption } from "./NavigationBar/NavigationOption"
 import SimulationPanelModal from './Panels/Simulation/SimulationPanelModal'
+import RealTimePanelModal from './Panels/RealTime/RealTimePanelModal'
 import { SimulationParamsRequest } from './API/SimulationParamsRequest'
 import { calculateDLattice, calculateULattice, calculateResolutions, dMaxPhysical, uMaxPhysical } from './utilities/constraints'
 
@@ -45,12 +45,6 @@ function App() {
 
       {/* <Stats className='aboslute bottom-3 right-3 z-20' /> */}
         
-      <WeatherContext>
-        <div className="absolute top-3 left-3 z-10">
-          <WeatherWidget />
-        </div>
-      </WeatherContext>
-      
       <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 z-10">
         <NavigationBar selected={selected} onSelect={opt => {
           const select = opt == selected ? NavigationOption.None : opt;
@@ -58,6 +52,11 @@ function App() {
         }} />
       </div>
       
+      <WeatherContext>
+        <RealTimePanelModal open={selected == NavigationOption.RealTime}/>
+      </WeatherContext>
+
+
       <SimulationPanelModal
         open={selected == NavigationOption.Simulation}
         onChange={(newParams) => {

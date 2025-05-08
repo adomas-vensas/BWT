@@ -24,6 +24,6 @@ export function calculateULattice(uPhysical: number)
 
 export function calculateResolutions(dLattice: number) : [number, number]
 {
-    return [floor(20 * 5), floor(10 * 5)]
+    return [floor(20 * 10), floor(10 * 10)]
 }
 
