@@ -48,7 +48,7 @@ export default function RealTimePanelModal({ open }: RealTimePanelModalProps) {
                   Wind Speed: {wind_speed_10m} {windSpeedUnit}
                 </p>
                 <p className="text-base leading-relaxed text-gray-500 dark:text-gray-400">
-                  Wind Direction: {degToCompass(wind_direction_10m)} {windSpeedUnit}
+                  Wind Direction: {degToCompass(wind_direction_10m)}
                 </p>
                 <p className="text-base leading-relaxed text-gray-500 dark:text-gray-400">
                   Temperature: {temperature_2m} {temperatureUnit}
@@ -57,8 +57,6 @@ export default function RealTimePanelModal({ open }: RealTimePanelModalProps) {
                   Last Updated: {time}
                 </p>
               </div>
-
-              <button className="bg-amber-50 rounded-lg ml-2">Send data</button>
             </div>
           </div>
         </div>
