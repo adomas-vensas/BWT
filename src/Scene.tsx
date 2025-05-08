@@ -8,6 +8,7 @@ import Mast, { MastHandle } from './objects/Mast'
 import VortexShedding from './objects/VortexShedding'
 import { SimulationParamsRequest } from './API/SimulationParamsRequest'
 import { getSocket } from './utilities/WebSocketSingleton'
+import { calculateDPhysical } from './utilities/constraints'
 
 
 interface SceneProps{
@@ -90,7 +91,7 @@ export default function Scene({params}: SceneProps) {
         <Mast
             ref={mastRef}
             position={[0, height / 2, 0]}
-            radius={0.5 / 2}
+            radius={calculateDPhysical(params.cylinderDiameter) / 2}
             height={height}
             lowerFrac={0.1}
         />
