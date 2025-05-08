@@ -8,6 +8,7 @@ import SimulationPanelModal from './Panels/Simulation/SimulationPanelModal'
 import RealTimePanelModal from './Panels/RealTime/RealTimePanelModal'
 import { SimulationParamsRequest } from './API/SimulationParamsRequest'
 import { calculateDLattice, calculateULattice, calculateResolutions, dMaxPhysical, uMaxPhysical } from './utilities/constraints'
+import AboutPanelModal from './Panels/About/AboutPanelModal'
 
 function App() {
 
@@ -64,6 +65,8 @@ function App() {
         }}
         params={params}
       />
+
+      <AboutPanelModal open={selected == NavigationOption.About}/>
 
     </div>
   )
