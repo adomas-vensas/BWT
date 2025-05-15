@@ -40,7 +40,7 @@ function App() {
           gl.setPixelRatio(window.devicePixelRatio)
           gl.setSize(window.innerWidth, window.innerHeight)
         }}
-        camera={{ position: [0, 30, 0], up: [1, 0, 0], near: 0.1, far: 1000 }}>
+        camera={{ position: [-5, 5, -5], up: [0, 1, 0], near: 0.1, far: 1000 }}>
           <Scene params={params} />
       </Canvas>
 

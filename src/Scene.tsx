@@ -83,7 +83,7 @@ export default function Scene({params}: SceneProps) {
         <>
         <ambientLight intensity={0.5} />
         <pointLight position={[10, 10, 10]} intensity={1} />
-        <axesHelper args={[5]} />
+        {/* <axesHelper args={[5]} /> */}
 
         <OrbitControls enableDamping />
 

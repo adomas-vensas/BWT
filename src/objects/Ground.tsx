@@ -15,6 +15,7 @@ export default function Ground({
   resolutionX
 }: GroundProps) {
     const heightMap = new THREE.TextureLoader().load('../src/textures/hill_height_map.png')
+    const textureMap = new THREE.TextureLoader().load('../src/textures/hills_bitmap.png')
 
     const geometry = useMemo(() => {
       const simplex = new SimplexNoise()
@@ -61,6 +62,7 @@ export default function Ground({
     >
       <meshStandardMaterial
         displacementMap={heightMap}
+        // map={textureMap}
         wireframe={true}
       />
     </mesh>
