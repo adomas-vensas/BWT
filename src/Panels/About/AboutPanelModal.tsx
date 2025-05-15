@@ -25,9 +25,9 @@ export default function AboutPanelModal({ open }: AboutPanelModalProps) {
 
               {/* Modal body */}
               <div className="p-4 md:p-5 space-y-4 leading-relaxed">
-                <p className="text-base leading-relaxed  text-gray-700 dark:text-gray-300">
+                <p className="text-base leading-relaxed  text-gray-700 dark:text-gray-300 text-justify">
                     This starter project showcases a digital twin of a bladeless wind turbine,
-                    simulating its oscillations and how those vibrations generate electricity via electromagnetic induction adn vortex induced vibrations (VIV).
+                    simulating its oscillations and how those vibrations create vortex induced vibrations (VIV).
                     An integrated fluid‐dynamics view visualizes vortex shedding — showing how airflow past the turbine creates alternating vortices.
                     Try out this demo to see both aerodynamic phenomena in action.
                 </p>
