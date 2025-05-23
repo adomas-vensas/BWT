@@ -4,7 +4,7 @@ This starter project showcases a digital twin of a bladeless wind turbine, simul
 
 This is a short demo:
 
-![demo](info/demo.gif)
+![demo](https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExZTVjcm5iZXRmY2N6cnJmMGxtajZhdmNta2Y2MHVtZGprd3pmMHl5eiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/tPJ1HNShtRuEeqDroU/giphy.gif)
 
 
 # How to Run the Project
