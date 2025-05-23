@@ -1,13 +1,11 @@
 import { SimulationParamsRequest } from "../API/SimulationParamsRequest";
 
-type MsgHandler = (data: ArrayBuffer) => void;
-
 let ws: WebSocket | null = null;
-const handlers = new Set<MsgHandler>();
+const PORT = import.meta.env.VITE_BACKEND_PORT
 
 export function getSocket(): WebSocket {
   if (!ws) {
-    ws = new WebSocket('ws://localhost:7910/stream/calculate');
+    ws = new WebSocket(`ws://localhost:${PORT}/stream/calculate`);
     ws.binaryType = 'arraybuffer';
   }
   return ws;
