@@ -14,7 +14,7 @@ These are some demos:
 
 If you are using a laptop computer, it is recommended to insert your charging cable to speed it up.
 
-1. Install [Docker](https://www.docker.com/)
+1. Install [Docker](https://www.docker.com/).
 2. :bangbang: After installation, make sure that Docker is running.
 3. Clone [this](https://github.com/adomas-vensas/BWT) repository.
 4. In the same folder, where this repository resides, clone [this](https://github.com/adomas-vensas/BWT_BACKEND) repository.
