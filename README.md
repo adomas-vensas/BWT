@@ -2,9 +2,10 @@
 
 This starter project showcases a digital twin of a bladeless wind turbine, simulating its oscillations and how those vibrations generate electricity via electromagnetic induction adn vortex induced vibrations (VIV). An integrated fluid‐dynamics view visualizes vortex shedding — showing how airflow past the turbine creates alternating vortices. Try out this demo to see both aerodynamic phenomena in action.
 
-This is a short demo:
+These are some demos:
 
-![demo](https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExZTVjcm5iZXRmY2N6cnJmMGxtajZhdmNta2Y2MHVtZGprd3pmMHl5eiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/tPJ1HNShtRuEeqDroU/giphy.gif)
+![real_time](https://media.giphy.com/media/n7uv6xDg39Cb4CVQ6P/giphy.gif)
+![simulation](https://media.giphy.com/media/s5Kz8FArrjxKVc9mqt/giphy.gif)
 
 
 # How to Run the Project
