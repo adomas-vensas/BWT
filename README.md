@@ -28,7 +28,7 @@ If you are using a laptop computer, it is recommended to insert your charging ca
    ```
    .\runservices.bat <PORT1> <PORT2>
    ```
-   where `PORT1` - frontend port, `PORT2` - backend port. Example: `.\runservices 8444 7654`
+   where `PORT1` - frontend port, `PORT2` - backend port. Example: `.\runservices.bat 8444 7654`
 7. Wait for the containers to build.
 8. Launch the frontend service in your browser:
    ```
