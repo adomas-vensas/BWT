@@ -23,16 +23,15 @@ If you are using a laptop computer, it is recommended to insert your charging ca
     ├── BWT/
     ├── BWT_BACKEND/
    ```
-6. Navigate to the BWT folder.
-7. Run the following script:
+6. Open command prompt in the `BWT` folder and run the following script:
    ```
    .\runservices.bat <PORT1> <PORT2>
    ```
-   where PORT1 - frontend port, PORT2 - backend port.
-8. Wait for the containers to build.
-9. Launch the frontend service in your browser:
+   where PORT1 - frontend port, PORT2 - backend port. Example: `.\runservices 8444 7654`
+7. Wait for the containers to build.
+8. Launch the frontend service in your browser:
    ```
    http://localhost:<PORT1>
    ```
-10. Wait for the calculations to load.
-11. Experiment.
+9. Wait for the calculations to load.
+10. Experiment.
