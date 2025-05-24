@@ -17,7 +17,7 @@ If you are using a laptop computer, it is recommended to insert your charging ca
 1. Install [Docker](https://www.docker.com/)
 2. After installation, make sure that Docker is running.
 3. Clone [this](https://github.com/adomas-vensas/BWT) repository.
-4. In the same folder, where this repository resides, copy the backend code from [this](https://github.com/adomas-vensas/BWT_BACKEND) repository.
+4. In the same folder, where this repository resides, clone [this](https://github.com/adomas-vensas/BWT_BACKEND) repository.
    The folder structure should be like this:
    ```
     someFolder/
@@ -28,7 +28,7 @@ If you are using a laptop computer, it is recommended to insert your charging ca
    ```
    .\runservices.bat <PORT1> <PORT2>
    ```
-   where PORT1 - frontend port, PORT2 - backend port. Example: `.\runservices 8444 7654`
+   where `PORT1` - frontend port, `PORT2` - backend port. Example: `.\runservices 8444 7654`
 7. Wait for the containers to build.
 8. Launch the frontend service in your browser:
    ```
